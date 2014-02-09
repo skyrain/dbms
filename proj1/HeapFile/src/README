@@ -1,0 +1,13 @@
+Please copy all the following files into you own working directory.
+
+Makefile: a sample makefile to compile your project.
+
+heapfile.h: specifications for the HeapFile class.
+	    ( Note: we do not expect you to change this file. )
+
+HFPage.h: spccifications for the HFPage class.
+	    ( Note: we do not expect you to change this file. )
+
+heapfile.C: the skeleton of the implementation of the HeapFile class.
+
+main.C, test_driver.C, heap_driver.C: the testing programs.

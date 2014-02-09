@@ -1,0 +1,11 @@
+
+Makefile: a sample makefile
+
+main.C  test_driver.C heap_driver.C: testing programs
+
+hfpage.h: specifications for the HFPage class.
+	  (Note: we do not expect you to change this file.)
+
+hfpage.C: skeleton of the implementation of the HFPage class.
+
+sample_output: output from a correct implementation
