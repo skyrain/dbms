@@ -104,15 +104,12 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 			//--- modify RID value ----
 			rid.pageNo = this->curPage;
 			rid.slotNo = this->slotCnt;
-			//--- modify exist slot ----
-			this->slot[0].offset = this->usedPtr - recLen + 1;
-			this->slot[0].length = recLen;
+			//--- add new slot ----
+			modifySlot(0, recLen);
 			//--- add the record data into page ----
-			memcpy(this->data[this->slot[0].offset], recPtr, recLen);
+			addData(0, recPtr, recLen);
 			//--- update HFpage info ---
 			this->slotCnt ++;
-			this->usedPtr = this->usedPtr - recLen;
-			this->freeSpace = this->freeSpace - recLen;
 		}
 		else
 		{
@@ -130,10 +127,11 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 			modifySlot(emptySlotNo, recLen);
 			//--- add the record data into page ---
 			addData(emptySlotNo, recPtr, recLen);
-			//--- update HFpage info ---
-			this->usedPtr = this->usedPtr - recLen;
-			this->freeSpace = this->freeSpace - recLen;
 		}
+		//--- update HFpage info ---
+		this->usedPtr = this->usedPtr - recLen;
+		this->freeSpace = this->freeSpace - recLen;
+	
 	}
 	return OK;
 }
@@ -251,7 +249,7 @@ void addData(int slotNo, char* recPtr, int recLen)
 {
 	if(slotNo == 0)
 	{
-		memcpy(this->data[slot[0].offset], recPtr, recLen);
+		memcpy(this->data[this->slot[0].offset], recPtr, recLen);
 	}
 	else
 	{
