@@ -16,6 +16,10 @@
 int getEmptySlotNo();
 void modifySlot(int slotNo, int recLen);
 void addData(int slotNo, char* recPtr, int recLen);
+int getRecordOffset(RID rid);
+//--- clean slot and return the length of the record ----
+int cleanSlot(RID rid);
+
 // ***********************************************
 
 // **********************************************************
@@ -131,9 +135,8 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 		//--- update HFpage info ---
 		this->usedPtr = this->usedPtr - recLen;
 		this->freeSpace = this->freeSpace - recLen;
-	
+		return OK;
 	}
-	return OK;
 }
 
 // **********************************************************
@@ -143,6 +146,12 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 Status HFPage::deleteRecord(const RID& rid)
 {
 	// fill in the body
+	//---?? 注意未处理delete不存在record得特殊情况----
+	
+	//--- get record offset ---
+	int offset = getRecordOffset(rid);
+	//--- clean corresponding slot & get record length---
+	int len = cleanSlot(rid);
 	return OK;
 }
 
@@ -257,4 +266,23 @@ void addData(int slotNo, char* recPtr, int recLen)
 		slot_t *tmpSlot = (slot_t *)data[(slotNo - 1) * sizeof(slot_t)];
 		memcpy(this->data[tmpSlot->offset], recPtr, recLen);
 	}
+}
+
+int getRecordOffset(RID rid)
+{
+	int slotNo = rid.slotNo;
+	if(slotNo == 0)
+	{
+		return this->slot[slotNo].offset;
+	}
+	else
+	{
+		slot_t *tmpSlot = (slot_t *)data[(slotNo - 1) * sizeof(slot_t)];
+		return tmpSlot->offset;
+	}
+}
+
+int cleanSlot(RID rid)
+{
+
 }
