@@ -175,6 +175,30 @@ Status HFPage::deleteRecord(const RID& rid)
 Status HFPage::firstRecord(RID& firstRid)
 {
 	// fill in the body
+	//--- if no record ---
+	if(this->slotCnt == 0)
+		return DONE;
+	
+	//--- get the RID of first record ---
+	if(this->slot[0].length != EMPTY_SLOT)
+	{
+		firstRid.slotNo = 0;
+		firstRid.pageNo = this->curPage;
+	}
+	else
+	{
+		for(int i = 1; i < this->slotCnt; i++)
+		{
+			slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+			if(tmpSlot->length != EMPTY_SLOT)
+			{
+				firstRid.slotNo = i;
+				firstRid.pageNo = this->curPage;
+				break;
+			}
+		}
+	}
+
 	return OK;
 }
 
@@ -184,15 +208,43 @@ Status HFPage::firstRecord(RID& firstRid)
 Status HFPage::nextRecord (RID curRid, RID& nextRid)
 {
 	// fill in the body
+	bool noNext = true;
+	for(int i = curRid.slotNo + 1; i < this->slotCnt; i++)
+	{
+		slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+		if(tmpSlot->length != EMPTY_SLOT)
+		{
+			nextRid.slotNo = i;
+			nextRid.pageNo = this->curPage;
+			noNext = false;
+			break;
+		}
+	}
+	if(noNext)
+		return DONE;
 
 	return OK;
 }
 
 // **********************************************************
 // returns length and copies out record with RID rid
+//--- ?? note: calloc memory here for recPtr not from caller --
 Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 {
 	// fill in the body
+	if(rid.slotNo == 0)
+	{
+		recPtr = (char *)calloc(1, this->slot[0].length);
+		recLen = this->slot[0].length;
+		memcpy(recPtr, this->data[this->slot[0].offset], recLen);
+	}
+	else
+	{
+		slot_t * tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
+		recPtr = (char *)calloc(1, tmpSlot->length);
+		recLen = tmpSlot->length;
+		memcpy(recPtr, this->data[tmpSlot->offset], recLen);
+	}
 	return OK;
 }
 
@@ -201,9 +253,21 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 // between this and getRecord is that getRecord copies out the record
 // into recPtr, while this function returns a pointer to the record
 // in recPtr.
+//--- ?? note: recPtr just points to the record within HFPage, not copy --
 Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 {
 	// fill in the body
+	if(rid.slotNo == 0)
+	{
+		recPtr = this->data[this->slot[0].offset];
+		recLen = this->slot[0].length;
+	}
+	else
+	{
+		slot_t * tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
+		recPtr = this->data[tmpSlot->offset];
+		recLen = tmpSlot->length;
+	}
 	return OK;
 }
 
@@ -212,7 +276,7 @@ Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 int HFPage::available_space(void)
 {
 	// fill in the body
-	return 0;
+	return this->freeSpace;
 }
 
 // **********************************************************
@@ -221,6 +285,16 @@ int HFPage::available_space(void)
 bool HFPage::empty(void)
 {
 	// fill in the body
+	if(this->slot[0].length != EMPTY_SLOT)
+		return false;
+	
+	for(int i = 1; i < this->slotCnt; i++)
+	{
+		slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+		if(tmpSlot->length != EMPTY_SLOT)
+			return false;
+	}
+
 	return true;
 }
 
@@ -309,7 +383,7 @@ int cleanSlot(RID rid)
 	}
 	else
 	{
-		slot_t *tmpSlot = (slot_t *)this->data[(slotNo - 1) * sizeof(slot_t)];
+		slot_t *tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
 		recLen = tmpSlot->length;
 		tmpSlot->length = EMPTY_SLOT;
 		return recLen;
