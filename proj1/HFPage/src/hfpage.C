@@ -19,7 +19,16 @@ void addData(int slotNo, char* recPtr, int recLen);
 int getRecordOffset(RID rid);
 //--- clean slot and return the length of the record ----
 int cleanSlot(RID rid);
-
+//--- shrink slot directory ---
+void shrinkSlotDir();
+//--- delete record, relocate records beind the deleted record---
+//--- update slot dir & update usedPtr, freeSpace ---
+void deleteRec(int offset, int length);
+//--- relocate records behind the records ---
+void relocateRecord(int offset, int length);
+//-- find the slot coresponding to back record ---
+//-- input: record offset ---
+slot_t findBackRec(int offset);
 // ***********************************************
 
 // **********************************************************
@@ -152,6 +161,12 @@ Status HFPage::deleteRecord(const RID& rid)
 	int offset = getRecordOffset(rid);
 	//--- clean corresponding slot & get record length---
 	int len = cleanSlot(rid);
+	//-- shrink slot directory ---
+	shrinkSlotDir();
+	//--- delete record & relocate behind records & slot dir ---
+	//--- & update usedPtr, freeSpace -----
+	deleteRec(offset, len);
+
 	return OK;
 }
 
@@ -277,12 +292,122 @@ int getRecordOffset(RID rid)
 	}
 	else
 	{
-		slot_t *tmpSlot = (slot_t *)data[(slotNo - 1) * sizeof(slot_t)];
+		slot_t *tmpSlot = (slot_t *)this->data[(slotNo - 1) * sizeof(slot_t)];
 		return tmpSlot->offset;
 	}
 }
 
 int cleanSlot(RID rid)
 {
+	int recLen;
+	//--- if rid.slotNo is in slot[0] ---
+	if (rid.slotNo == 0)
+	{
+		recLen = this->slot[0].length;
+		this->slot[0].length = EMPTY_SLOT;
+		return recLen;
+	}
+	else
+	{
+		slot_t *tmpSlot = (slot_t *)this->data[(slotNo - 1) * sizeof(slot_t)];
+		recLen = tmpSlot->length;
+		tmpSlot->length = EMPTY_SLOT;
+		return recLen;
+	}
+}
 
+void shrinkSlotDir()
+{
+	//--- check if only one slot ---
+	if(this->slotCnt == 1)
+	{
+		if(this->slot[0].length == EMPTY_SLOT)
+		{
+			this->slot[0].offset == INVALID_SLOT;
+			this->slotCnt--;
+		}
+	}
+	else
+	{
+		slot_t *tmpSlot = (slot_t *)this->data[(this->slotCnt - 1) * sizeof(slot_t)];
+		if(tmpSlot->length == EMPTY_SLOT)
+		{
+			tmpSlot->offset = INVALID_SLOT;
+			this->slotCnt--;
+		}
+	}
+}
+
+slot_t findBackRec(int offset)
+{
+	slot_t backRecSlot;
+	backRecSlot.offset = INVALID_SLOT;
+	backRecSlot.length = EMPTY_SLOT;
+
+	if(this->slot[0].offset < offset)
+	{
+		 backRecSlot.offset = this->slot[0].offset;
+		 backRecSlot.length = this->slot[0].length;
+	}
+
+	for(int i = 1; i < this->slotCnt; i++)
+	{
+		slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];		
+		if(tmpSlot->offset < offset && tmpSlot->offset > backRecSlot.offset)
+		{
+			backRecSlot.offset = tmpSlot->offset;
+			backRecSlot.length = tmpSlot->length;
+		}
+	}
+	return backRecSlot;
+}
+
+void updateMovingSlot(slot_t mSlot, int offset)
+{
+	//--- identify the slot in HFpage corresponding to mSlot ----
+	//--- then update the offset of it ---
+	if(this->slot[0].offset == mSlot.offset)
+		this->slot[0].offset = offset; 
+	else
+	{
+		for(int i = 1; i < this->slotCnt; i++)
+		{
+			slot_t * tmpSlot = (slot_t *)data[(i - 1) * sizeof(slot_t)];
+			if(tmpSlot->offset == mSlot.offset)
+			{
+				tmpSlot->offset = offset;
+				break;
+			}
+		}
+	}
+}
+
+void relocateRec(int offset, int length)
+{		
+	while(offset != this->usedPtr + 1)
+	{
+		//--- allocate the nearest back record's slot ---
+		slot_t backSlot = findBackRec(offset);
+		//--- move the nearest back record forward ----
+		int dest = backSlot.offset + length;
+		memmove(dest, this->data[backSlot.offset], backSlot.length);
+		//--- update offset of the moving slot ---
+		updateMovingSlot(backSlot, dest);
+		
+		//--- update loop condition ---
+		offset = backSlot.offset;
+	}
+}
+
+
+void deleteRec(int offset, int length)
+{
+	//--- delete record data ---
+	memset(this->data[offset], 0, length);
+	//--- move records behind the deleted record forward ---
+	//--- & update the slot directory with their new offset value ---
+	relocateRec(offset, length);
+	//update usedPtr, freeSpace ---
+	this->usedPtr = this->usedPtr + length;
+	this->freeSpace = this->freeSpace + length;
 }
