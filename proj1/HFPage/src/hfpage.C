@@ -28,7 +28,7 @@ void deleteRec(int offset, int length);
 void relocateRecord(int offset, int length);
 //-- find the slot coresponding to back record ---
 //-- input: record offset ---
-slot_t findBackRec(int offset);
+struct slot_t findBackRec(int offset);
 // ***********************************************
 
 // **********************************************************
@@ -205,6 +205,7 @@ Status HFPage::firstRecord(RID& firstRid)
 // **********************************************************
 // returns RID of next record on the page
 // returns DONE if no more records exist on the page; otherwise OK
+//--- ?? deal with error---
 Status HFPage::nextRecord (RID curRid, RID& nextRid)
 {
 	// fill in the body
@@ -228,20 +229,20 @@ Status HFPage::nextRecord (RID curRid, RID& nextRid)
 
 // **********************************************************
 // returns length and copies out record with RID rid
-//--- ?? note: calloc memory here for recPtr not from caller --
+//--- deal with error ?? ---
 Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 {
 	// fill in the body
 	if(rid.slotNo == 0)
 	{
-		recPtr = (char *)calloc(1, this->slot[0].length);
+		//recPtr = (char *)calloc(1, this->slot[0].length);
 		recLen = this->slot[0].length;
 		memcpy(recPtr, this->data[this->slot[0].offset], recLen);
 	}
 	else
 	{
 		slot_t * tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
-		recPtr = (char *)calloc(1, tmpSlot->length);
+		//recPtr = (char *)calloc(1, tmpSlot->length);
 		recLen = tmpSlot->length;
 		memcpy(recPtr, this->data[tmpSlot->offset], recLen);
 	}
@@ -253,7 +254,7 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 // between this and getRecord is that getRecord copies out the record
 // into recPtr, while this function returns a pointer to the record
 // in recPtr.
-//--- ?? note: recPtr just points to the record within HFPage, not copy --
+//--- deal with error ?? ---
 Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 {
 	// fill in the body
@@ -276,6 +277,26 @@ Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 int HFPage::available_space(void)
 {
 	// fill in the body
+	//--- check if all slots are full ---
+	bool allSlotFull = true;
+	if(this->slot[0].length == EMPTY_SLOT)
+		allSlotFull = false;
+	else
+	{
+		for(int i = 1; i < this->slotCnt; i++)
+		{
+			slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+			if(tmpSlot->length == EMPTY_SLOT)
+			{
+				allSlotFull = false;
+				break;
+			}
+		}
+	}
+
+	if(allSlotFull)
+		return this->freeSpace - sizeof(slot_t);
+
 	return this->freeSpace;
 }
 
