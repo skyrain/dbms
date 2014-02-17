@@ -7,6 +7,7 @@
 #include "buf.h"
 #include "db.h"
 
+/*
 // **********************************************
 //---- assist methods definitions ---------------
 
@@ -30,7 +31,7 @@ void relocateRecord(int offset, int length);
 //-- input: record offset ---
 struct slot_t findBackRec(int offset);
 // ***********************************************
-
+*/
 // **********************************************************
 // page class constructor
 
@@ -105,7 +106,7 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 {
 	// fill in the body
 	//--- check if does not have enough free Space ----
-	if(this->freeSpace < recLen + sizeof(slot_t))
+	if((int)this->freeSpace < recLen + (int)sizeof(slot_t))
 	{
 		return DONE;	
 	}
@@ -128,6 +129,7 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 		{
 			//--- get empty slot no ---
 			int emptySlotNo = getEmptySlotNo();
+		
 			if(emptySlotNo == -1)
 			{
 				emptySlotNo = this->slotCnt;
@@ -189,7 +191,7 @@ Status HFPage::firstRecord(RID& firstRid)
 	{
 		for(int i = 1; i < this->slotCnt; i++)
 		{
-			slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+			slot_t * tmpSlot = (slot_t *)&(this->data[(i - 1) * sizeof(slot_t)]);
 			if(tmpSlot->length != EMPTY_SLOT)
 			{
 				firstRid.slotNo = i;
@@ -212,7 +214,7 @@ Status HFPage::nextRecord (RID curRid, RID& nextRid)
 	bool noNext = true;
 	for(int i = curRid.slotNo + 1; i < this->slotCnt; i++)
 	{
-		slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+		slot_t * tmpSlot = (slot_t *)&(this->data[(i - 1) * sizeof(slot_t)]);
 		if(tmpSlot->length != EMPTY_SLOT)
 		{
 			nextRid.slotNo = i;
@@ -237,14 +239,14 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 	{
 		//recPtr = (char *)calloc(1, this->slot[0].length);
 		recLen = this->slot[0].length;
-		memcpy(recPtr, this->data[this->slot[0].offset], recLen);
+		memcpy(recPtr, &(this->data[this->slot[0].offset]), recLen);
 	}
 	else
 	{
-		slot_t * tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
+		slot_t * tmpSlot = (slot_t *)&(this->data[(rid.slotNo - 1) * sizeof(slot_t)]);
 		//recPtr = (char *)calloc(1, tmpSlot->length);
 		recLen = tmpSlot->length;
-		memcpy(recPtr, this->data[tmpSlot->offset], recLen);
+		memcpy(recPtr, &(this->data[tmpSlot->offset]), recLen);
 	}
 	return OK;
 }
@@ -260,13 +262,13 @@ Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 	// fill in the body
 	if(rid.slotNo == 0)
 	{
-		recPtr = this->data[this->slot[0].offset];
+		recPtr = &(this->data[this->slot[0].offset]);
 		recLen = this->slot[0].length;
 	}
 	else
 	{
-		slot_t * tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
-		recPtr = this->data[tmpSlot->offset];
+		slot_t * tmpSlot = (slot_t *)&(this->data[(rid.slotNo - 1) * sizeof(slot_t)]);
+		recPtr = &(this->data[tmpSlot->offset]);
 		recLen = tmpSlot->length;
 	}
 	return OK;
@@ -285,7 +287,7 @@ int HFPage::available_space(void)
 	{
 		for(int i = 1; i < this->slotCnt; i++)
 		{
-			slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+			slot_t * tmpSlot = (slot_t *)&(this->data[(i - 1) * sizeof(slot_t)]);
 			if(tmpSlot->length == EMPTY_SLOT)
 			{
 				allSlotFull = false;
@@ -311,7 +313,7 @@ bool HFPage::empty(void)
 	
 	for(int i = 1; i < this->slotCnt; i++)
 	{
-		slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];
+		slot_t * tmpSlot = (slot_t *)&(this->data[(i - 1) * sizeof(slot_t)]);
 		if(tmpSlot->length != EMPTY_SLOT)
 			return false;
 	}
@@ -322,7 +324,7 @@ bool HFPage::empty(void)
 
 // ************** assist methods implementations ---------
 
-int getEmptySlotNo()
+int HFPage::getEmptySlotNo()
 {
 	//--- check if empty slot already exist ---
 	int emptySlotNo = -1;
@@ -330,10 +332,10 @@ int getEmptySlotNo()
 		emptySlotNo = 0;
 	else
 	{
-		for(int i = 1; i < slotCnt; i++)
+		for(int i = 1; i < this->slotCnt; i++)
 		{
 			//--- cast correct?? ---
-			slot_t *tmpSlot = (slot_t *)this->data[sizeof(slot_t) * (i - 1)];
+			slot_t *tmpSlot = (slot_t *)&(this->data[sizeof(slot_t) * (i - 1)]);
 			if(tmpSlot->length == EMPTY_SLOT)
 			{
 				emptySlotNo = i;
@@ -344,7 +346,7 @@ int getEmptySlotNo()
 	return emptySlotNo;
 }
 
-void modifySlot(int slotNo, int recLen)
+void HFPage::modifySlot(int slotNo, int recLen)
 {
 	//--- add new slot ----
 	slot_t newSlot;
@@ -358,27 +360,26 @@ void modifySlot(int slotNo, int recLen)
 	}
 	else
 	{
-		memcpy(data[(slotNo - 1) * sizeof(slot_t)],
-				newSlot, sizeof(slot_t));
+		memcpy(&(data[(slotNo - 1) * sizeof(slot_t)]),
+				&newSlot, sizeof(slot_t));
 	}
 }
 
 
-void addData(int slotNo, char* recPtr, int recLen)
+void HFPage::addData(int slotNo, char* recPtr, int recLen)
 {
 	if(slotNo == 0)
 	{
-		memcpy(this->data[this->slot[0].offset], recPtr, recLen);
+		memcpy(&(this->data[this->slot[0].offset]), recPtr, recLen);
 	}
 	else
 	{
-		int offset;
-		slot_t *tmpSlot = (slot_t *)data[(slotNo - 1) * sizeof(slot_t)];
-		memcpy(this->data[tmpSlot->offset], recPtr, recLen);
+		slot_t *tmpSlot = (slot_t *)&(data[(slotNo - 1) * sizeof(slot_t)]);
+		memcpy(&(this->data[tmpSlot->offset]), recPtr, recLen);
 	}
 }
 
-int getRecordOffset(RID rid)
+int HFPage::getRecordOffset(RID rid)
 {
 	int slotNo = rid.slotNo;
 	if(slotNo == 0)
@@ -387,12 +388,12 @@ int getRecordOffset(RID rid)
 	}
 	else
 	{
-		slot_t *tmpSlot = (slot_t *)this->data[(slotNo - 1) * sizeof(slot_t)];
-		return tmpSlot->offset;
+		slot_t *tmpSlot = (slot_t *)&(this->data[(slotNo - 1) * sizeof(slot_t)]);
+		return (int)tmpSlot->offset;
 	}
 }
 
-int cleanSlot(RID rid)
+int HFPage::cleanSlot(RID rid)
 {
 	int recLen;
 	//--- if rid.slotNo is in slot[0] ---
@@ -404,27 +405,27 @@ int cleanSlot(RID rid)
 	}
 	else
 	{
-		slot_t *tmpSlot = (slot_t *)this->data[(rid.slotNo - 1) * sizeof(slot_t)];
+		slot_t *tmpSlot = (slot_t *)&(this->data[(rid.slotNo - 1) * sizeof(slot_t)]);
 		recLen = tmpSlot->length;
 		tmpSlot->length = EMPTY_SLOT;
 		return recLen;
 	}
 }
 
-void shrinkSlotDir()
+void HFPage::shrinkSlotDir()
 {
 	//--- check if only one slot ---
 	if(this->slotCnt == 1)
 	{
 		if(this->slot[0].length == EMPTY_SLOT)
 		{
-			this->slot[0].offset == INVALID_SLOT;
+			this->slot[0].offset = INVALID_SLOT;
 			this->slotCnt--;
 		}
 	}
 	else
 	{
-		slot_t *tmpSlot = (slot_t *)this->data[(this->slotCnt - 1) * sizeof(slot_t)];
+		slot_t *tmpSlot = (slot_t *)&(this->data[(this->slotCnt - 1) * sizeof(slot_t)]);
 		if(tmpSlot->length == EMPTY_SLOT)
 		{
 			tmpSlot->offset = INVALID_SLOT;
@@ -433,7 +434,7 @@ void shrinkSlotDir()
 	}
 }
 
-slot_t findBackRec(int offset)
+struct slot_t HFPage::findBackRec(int offset)
 {
 	slot_t backRecSlot;
 	backRecSlot.offset = INVALID_SLOT;
@@ -457,7 +458,7 @@ slot_t findBackRec(int offset)
 	return backRecSlot;
 }
 
-void updateMovingSlot(slot_t mSlot, int offset)
+void HFPage::updateMovingSlot(slot_t mSlot, int offset)
 {
 	//--- identify the slot in HFpage corresponding to mSlot ----
 	//--- then update the offset of it ---
@@ -467,7 +468,7 @@ void updateMovingSlot(slot_t mSlot, int offset)
 	{
 		for(int i = 1; i < this->slotCnt; i++)
 		{
-			slot_t * tmpSlot = (slot_t *)data[(i - 1) * sizeof(slot_t)];
+			slot_t * tmpSlot = (slot_t *)&(data[(i - 1) * sizeof(slot_t)]);
 			if(tmpSlot->offset == mSlot.offset)
 			{
 				tmpSlot->offset = offset;
@@ -477,7 +478,7 @@ void updateMovingSlot(slot_t mSlot, int offset)
 	}
 }
 
-void relocateRec(int offset, int length)
+void HFPage::relocateRec(int offset, int length)
 {		
 	while(offset != this->usedPtr + 1)
 	{
@@ -485,7 +486,7 @@ void relocateRec(int offset, int length)
 		slot_t backSlot = findBackRec(offset);
 		//--- move the nearest back record forward ----
 		int dest = backSlot.offset + length;
-		memmove(dest, this->data[backSlot.offset], backSlot.length);
+		memmove(&(this->data[dest]), &(this->data[backSlot.offset]), backSlot.length);
 		//--- update offset of the moving slot ---
 		updateMovingSlot(backSlot, dest);
 		
@@ -495,10 +496,10 @@ void relocateRec(int offset, int length)
 }
 
 
-void deleteRec(int offset, int length)
+void HFPage::deleteRec(int offset, int length)
 {
 	//--- delete record data ---
-	memset(this->data[offset], 0, length);
+	memset(&(this->data[offset]), 0, length);
 	//--- move records behind the deleted record forward ---
 	//--- & update the slot directory with their new offset value ---
 	relocateRec(offset, length);
