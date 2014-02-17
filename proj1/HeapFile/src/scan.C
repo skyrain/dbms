@@ -18,19 +18,20 @@
 Scan::Scan(HeapFile *hf, Status& status)   
 {   
     // ini do all the constructor work
-	status = init(hf);   if(status != OK)
-		cout << "init fails" << endl;
+    status = init(hf); 
+    if(status != OK)
+        cout << "init fails" << endl;
 }   
    
 // *******************************************
 // The deconstructor unpin all pages.
 Scan::~Scan()   
 {   
-	// Reset everything and unpin all pages.
-	Status status;
+    // Reset everything and unpin all pages.
+    Status status;
     status = reset();
-	if(status != OK)
-		cout << "reset fails" << endl;
+    if(status != OK)
+	cout << "reset fails" << endl;
 }   
    
 // *******************************************
@@ -39,14 +40,14 @@ Scan::~Scan()
 Status Scan::getNext(RID& rid, char *recPtr, int& recLen)   
 {   
     // determine if there still have page or record in page
-	if (nxtUserStatus != OK)   
+    if (nxtUserStatus != OK)   
         nextDataPage();   
     if (dataPage == NULL)   
         return DONE;   
     
-	// retrieve the record in the same page
+    // retrieve the record in the same page
     rid = userRid;        
-	dataPage->getRecord(rid, recPtr, recLen);   
+    dataPage->getRecord(rid, recPtr, recLen);   
     nxtUserStatus = dataPage->nextRecord(rid, userRid);   
    
     return OK;   
@@ -57,7 +58,7 @@ Status Scan::getNext(RID& rid, char *recPtr, int& recLen)
 Status Scan::init(HeapFile *hf)   
 {   
     // return the first page to the scanner
-	_hf = hf;   
+    _hf = hf;   
     return firstDataPage();   
 }   
    
@@ -65,14 +66,14 @@ Status Scan::init(HeapFile *hf)
 // Reset everything and unpin all pages.
 Status Scan::reset()   
 {   
-	if(dataPage != NULL)   
-        MINIBASE_BM->unpinPage(dataPageId);   
+    if(dataPage != NULL)   
+    MINIBASE_BM->unpinPage(dataPageId);   
     
-	// set back the datapage and ID into unused state.
-	dataPage = NULL; 
+    // set back the datapage and ID into unused state.
+    dataPage = NULL; 
     dataPageId = 0;    
     nxtUserStatus = OK;   
-	return OK;	
+    return OK;	
 }   
    
 // *******************************************
@@ -80,16 +81,16 @@ Status Scan::reset()
 Status Scan::firstDataPage()   
 {      
     Status status;
-	dataPage = NULL;
-	// Point the heapfile we are using to the hearder page at first.
+    dataPage = NULL;
+    // Point the heapfile we are using to the hearder page at first.
     dataPageId = _hf->firstDirPageId;      
-	// get the first data page
+    // get the first data page
     status = nextDataPage(); 
 	
-	if(status != OK)
-		cout << " error when get data page" << endl;
+    if(status != OK)
+	cout << " error when get data page" << endl;
 	
-	//assume there is data record in the first data page
+    //assume there is data record in the first data page
     nxtUserStatus = OK;   
     return OK;   
 }   
@@ -103,19 +104,19 @@ Status Scan::nextDataPage()
         return DONE;
 		
     Status status;
-	if(dataPageId == INVALID_PAGE){
-		// get the first record in the data page file and the next page ID
-		MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);     
-		// make sure if the new page has the record
-		status = dataPage->firstRecord(userRid);   
-		if(status != DONE)
-			return OK;
-	}
+    if(dataPageId == INVALID_PAGE){
+	// get the first record in the data page file and the next page ID
+	MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);     
+	// make sure if the new page has the record
+	status = dataPage->firstRecord(userRid);   
+	if(status != DONE)
+	    return OK;
+    }
 	
-	PageId nextPageId = INVALID_PAGE; 
+    PageId nextPageId = INVALID_PAGE; 
     nextPageId = dataPage->getNextPage();   
 	
-	MINIBASE_BM->unpinPage(dataPageId);   
+    MINIBASE_BM->unpinPage(dataPageId);   
     dataPage = NULL;   
     dataPageId = nextPageId;   
     if (dataPageId == INVALID_PAGE)   
