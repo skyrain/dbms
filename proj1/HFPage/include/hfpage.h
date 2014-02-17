@@ -116,7 +116,7 @@ private:
 	
 	//-- find the slot coresponding to back record ---
 	//-- input: record offset ---
-	struct slot_t findBackRec(int offset);
+	slot_t findBackRec(int offset);
 
 	void updateMovingSlot(slot_t mSlot, int offset);
 	

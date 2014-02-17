@@ -434,7 +434,7 @@ void HFPage::shrinkSlotDir()
 	}
 }
 
-struct slot_t HFPage::findBackRec(int offset)
+HFPage::slot_t HFPage::findBackRec(int offset)
 {
 	slot_t backRecSlot;
 	backRecSlot.offset = INVALID_SLOT;
@@ -448,7 +448,7 @@ struct slot_t HFPage::findBackRec(int offset)
 
 	for(int i = 1; i < this->slotCnt; i++)
 	{
-		slot_t * tmpSlot = (slot_t *)this->data[(i - 1) * sizeof(slot_t)];		
+		slot_t * tmpSlot = (slot_t *)&(this->data[(i - 1) * sizeof(slot_t)]);		
 		if(tmpSlot->offset < offset && tmpSlot->offset > backRecSlot.offset)
 		{
 			backRecSlot.offset = tmpSlot->offset;
