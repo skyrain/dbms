@@ -29,7 +29,7 @@ void deleteRec(int offset, int length);
 void relocateRecord(int offset, int length);
 //-- find the slot coresponding to back record ---
 //-- input: record offset ---
-struct slot_t findBackRec(int offset);
+HFPage::slot_t findBackRec(int offset);
 // ***********************************************
 */
 // **********************************************************
@@ -39,8 +39,9 @@ void HFPage::init(PageId pageNo)
 {
 	// fill in the body
 	this->slotCnt = 0;
-	//--- ?? points to the end for future record ----
-	this->usedPtr = MAX_SPACE - DPFIXED - 1;
+	//--- points to the end for future record ----
+	//--- and starts from 1 not 0 ---
+	this->usedPtr = MAX_SPACE - DPFIXED;
 	this->freeSpace = MAX_SPACE - DPFIXED;
 	this->type = -1;
 	this->prevPage = INVALID_PAGE;
@@ -106,9 +107,16 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 {
 	// fill in the body
 	//--- check if does not have enough free Space ----
-	if((int)this->freeSpace < recLen + (int)sizeof(slot_t))
+	//--- get empty slot no ---
+	int emptySlotNo = getEmptySlotNo();
+
+	if((int)this->freeSpace < recLen + (int)sizeof(slot_t) && emptySlotNo == -1)
 	{
 		return DONE;	
+	}
+	else if((int)this->freeSpace < recLen && emptySlotNo != -1)
+	{
+		return DONE;
 	}
 	else
 	{
@@ -127,9 +135,6 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 		}
 		else
 		{
-			//--- get empty slot no ---
-			int emptySlotNo = getEmptySlotNo();
-		
 			if(emptySlotNo == -1)
 			{
 				emptySlotNo = this->slotCnt;
