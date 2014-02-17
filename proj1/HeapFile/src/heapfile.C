@@ -101,8 +101,8 @@ Status HeapFile::deleteFile()
 }
 
 // ****************************************************************
-// get a new datapage from the buffer manager and initialize dpinfo
-// returns a pointer to the newly allocated page
+// Get a new datapage from the buffer manager and initialize dpinfo
+// (Allocate pages in the db file via buffer manager)
 Status HeapFile::newDataPage(DataPageInfo *dpinfop)
 {
     // fill in the body

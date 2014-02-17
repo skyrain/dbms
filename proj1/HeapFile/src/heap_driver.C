@@ -474,11 +474,12 @@ int HeapDriver::test4()
        --numRecs;
     }
 
-    if ( status == DONE )
+    if ( status == DONE ){
       if ( numRecs )
         cerr << "*** Scan missed " << numRecs << " records\n";
       else
         status = OK;
+     }
    }
 
    delete scan;

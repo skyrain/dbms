@@ -21,13 +21,13 @@ enum SelectType { selRange, selExact, selBoth, selUndefined };
 
 typedef int PageId;
 
-typedef struct RID{
-PageId  pageNo;
-int  slotNo;
-int operator==(const RID rid) const
-  {return pageNo==rid.pageNo && slotNo==rid.slotNo;};
-int operator!=(const RID rid) const
-  {return pageNo!=rid.pageNo || slotNo!=rid.slotNo;};
+struct RID{
+	PageId  pageNo;
+	int  slotNo;
+	int operator==(const RID rid) const
+	  {return pageNo==rid.pageNo && slotNo==rid.slotNo;};
+	int operator!=(const RID rid) const
+	  {return pageNo!=rid.pageNo || slotNo!=rid.slotNo;};
 };
 
 

@@ -13,12 +13,16 @@
 #include "db.h"
 
 // *******************************************
+// The constructor pins the first page in the file
+// and initializes its private data members from the private data members from hf
 Scan::Scan (HeapFile *hf, Status& status)
 {
+  // put your code here
   status = OK;
 }
 
 // *******************************************
+// The deconstructor unpin all pages.
 Scan::~Scan()
 {
   // put your code here
@@ -29,6 +33,44 @@ Scan::~Scan()
 // Also returns the RID of the retrieved record.
 Status Scan::getNext(RID& rid, char *recPtr, int& recLen)
 {
+  // put your code here
+  return OK;
+}
+
+// *******************************************
+// Do all the constructor work.
+Status Scan::init(HeapFile *hf)
+{
+  // put your code here
+  return OK;
+}
+
+// *******************************************
+// Reset everything and unpin all pages.
+Status Scan::reset()
+{
+  // put your code here
+  return OK;
+}
+
+// *******************************************
+// Copy data about first page in the file.
+Status Scan::firstDataPage()
+{
+  // put your code here
+  return OK;
+}
+
+// *******************************************
+// Retrieve the next data page.
+Status Scan::nextDataPage(){
+  // put your code here
+  return OK;
+}
+
+// *******************************************
+// Retrieve the next directory page.
+Status Scan::nextDirPage() {
   // put your code here
   return OK;
 }
