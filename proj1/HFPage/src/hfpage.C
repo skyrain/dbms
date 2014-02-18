@@ -7,6 +7,11 @@
 #include "buf.h"
 #include "db.h"
 
+/*---- ?? ---
+"//return" means confusion on the return error code value
+*/
+
+
 // **********************************************************
 // page class constructor
 
@@ -87,11 +92,13 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 
 	if((int)this->freeSpace < recLen + (int)sizeof(slot_t) && emptySlotNo == -1)
 	{
-		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);		
+		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
+		//return DONE;
 	}
 	else if((int)this->freeSpace < recLen && emptySlotNo != -1)
 	{
 		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
+		return DONE;
 	}
 	else
 	{
@@ -140,11 +147,14 @@ Status HFPage::deleteRecord(const RID& rid)
 	//--- deal with errors ----
 	if(rid.pageNo < 0 || rid.slotNo < 0)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, BAD_RID);
+		//return FAIL;
 	if(rid.slotNo >= this->slotCnt)	
 		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
+		//return FAIL;
 	//--- deal with empty page case ---
 	if(empty())
 		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_RECORDS);
+		//return FAIL;
  
 	//--- get record offset ---
 	int offset = getRecordOffset(rid);
@@ -154,7 +164,7 @@ Status HFPage::deleteRecord(const RID& rid)
 	//--- deal with already deleted case ---
 	if(offset == INVALID_SLOT || len == EMPTY_SLOT)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, ALREADY_DELETED);
-
+		//return FAIL;
 	//-- shrink slot directory ---
 	shrinkSlotDir();
 	//--- delete record & relocate behind records & slot dir ---
@@ -171,7 +181,7 @@ Status HFPage::firstRecord(RID& firstRid)
 	// fill in the body
 	//--- if no record ---
 	if(this->slotCnt == 0)
-		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_RECORDS);
+		return DONE;
 	
 	bool hasRecord = false;
 	//--- get the RID of first record ---
@@ -197,7 +207,7 @@ Status HFPage::firstRecord(RID& firstRid)
 	}
 	
 	if(!hasRecord)
-		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_RECORDS);
+		return DONE;
 
 	return OK;
 }
@@ -208,6 +218,12 @@ Status HFPage::firstRecord(RID& firstRid)
 Status HFPage::nextRecord (RID curRid, RID& nextRid)
 {
 	// fill in the body
+	//--- curRid is not valid input ---
+	if(curRid.pageNo < 0 || curRid.slotNo < 0)
+		return FAIL;
+	if(curRid.slotNo >= this->slotCnt)
+		return FAIL;
+
 	bool noNext = true;
 	for(int i = curRid.slotNo + 1; i < this->slotCnt; i++)
 	{
@@ -221,7 +237,7 @@ Status HFPage::nextRecord (RID curRid, RID& nextRid)
 		}
 	}
 	if(noNext)
-		return MINIBASE_FIRST_ERROR(HEAPFILE, END_OF_PAGE);
+		return DONE;
 
 	return OK;
 }
@@ -233,12 +249,12 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 	// fill in the body
 	if(rid.slotNo < 0 || rid.pageNo < 0)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, BAD_RID);
+		//return FAIL;
 	if(rid.slotNo >= this->slotCnt)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
-
+		//return FAIL;
 	if(rid.slotNo == 0)
 	{
-		//recPtr = (char *)calloc(1, this->slot[0].length);
 		recLen = this->slot[0].length;
 		if(recLen == EMPTY_SLOT)
 			return FAIL;
@@ -247,7 +263,6 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 	else
 	{
 		slot_t * tmpSlot = (slot_t *)&(this->data[(rid.slotNo - 1) * sizeof(slot_t)]);
-		//recPtr = (char *)calloc(1, tmpSlot->length);
 		recLen = tmpSlot->length;
 		if(recLen == EMPTY_SLOT)
 			return FAIL;
@@ -261,20 +276,20 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 // between this and getRecord is that getRecord copies out the record
 // into recPtr, while this function returns a pointer to the record
 // in recPtr.
-//--- deal with error ?? ---
 Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 {
 	// fill in the body
 	if(rid.slotNo < 0 || rid.pageNo < 0)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, BAD_RID);
+		//return FAIL;
 	if(rid.slotNo >= this->slotCnt)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
-
+		//return FAIL;
 	if(rid.slotNo == 0)
 	{
 		recLen = this->slot[0].length;
 		if(recLen == EMPTY_SLOT)
-			return FAIL;
+			return DONE;
 		recPtr = &(this->data[this->slot[0].offset]);
 	}
 	else
@@ -282,7 +297,7 @@ Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 		slot_t * tmpSlot = (slot_t *)&(this->data[(rid.slotNo - 1) * sizeof(slot_t)]);
 		recLen = tmpSlot->length;
 		if(recLen == EMPTY_SLOT)
-			return FAIL;
+			return DONE;
 		recPtr = &(this->data[tmpSlot->offset]);
 	}
 	return OK;
@@ -439,14 +454,34 @@ void HFPage::shrinkSlotDir()
 	}
 	else
 	{
-		slot_t *tmpSlot = (slot_t *)&(this->data[(this->slotCnt - 1) * sizeof(slot_t)]);
-		if(tmpSlot->length == EMPTY_SLOT)
+		bool moreEmptyTailSlot = true;
+		while(moreEmptyTailSlot)
 		{
-			tmpSlot->offset = INVALID_SLOT;
+			slot_t *tmpSlot = (slot_t *)&(this->data[(this->slotCnt - 2) * sizeof(slot_t)]);
+			if(tmpSlot->length == EMPTY_SLOT)
+			{
+				tmpSlot->offset = INVALID_SLOT;
+				this->slotCnt--;
+			}
+
+			if(this->slotCnt != 1)
+			{
+				tmpSlot = (slot_t *)&(this->data[(this->slotCnt - 2) * sizeof(slot_t)]);
+				if(tmpSlot->length != EMPTY_SLOT)
+					moreEmptyTailSlot = false;
+			}
+			else
+				moreEmptyTailSlot = false;
+		}
+			
+		if(this->slot[0].length == EMPTY_SLOT && this->slotCnt == 1)
+		{
+			this->slot[0].offset = INVALID_SLOT;
 			this->slotCnt--;
 		}
 	}
 }
+
 
 HFPage::slot_t HFPage::findBackRec(int offset)
 {
