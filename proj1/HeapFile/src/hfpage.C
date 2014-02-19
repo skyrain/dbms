@@ -92,6 +92,7 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 
 	if((int)this->freeSpace < recLen + (int)sizeof(slot_t) && emptySlotNo == -1)
 	{
+		// really need that ?
 		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
 		//return DONE;
 	}
