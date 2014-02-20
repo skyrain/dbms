@@ -117,13 +117,13 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
 	MINIBASE_BM->unpinPage(currPageId,(status == OK));   
 		
 	// if insert success, that means there is enough space in the current page.
-        if(status == OK)   
-            break;   
-	else if(minibase_error.error_index() == NO_SPACE){
+	if(status == OK)   
+		break;   
+	else if(minibase_errors.error_index() == NO_SPACE){
 		endPageId = currPageId;   
 		currPageId = nextPageId;
 		minibase_errors.clear_errors();
-	    }
+	}
     }   
    
     // create a new page and add to the list, then insert the record in that new page.
