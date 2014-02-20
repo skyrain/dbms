@@ -92,14 +92,13 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 
 	if((int)this->freeSpace < recLen + (int)sizeof(slot_t) && emptySlotNo == -1)
 	{
-		// really need that ?
 		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
 		//return DONE;
 	}
 	else if((int)this->freeSpace < recLen && emptySlotNo != -1)
 	{
 		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
-		return DONE;
+		//return DONE;
 	}
 	else
 	{
@@ -133,7 +132,11 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 		}
 		//--- update HFpage info ---
 		this->usedPtr = this->usedPtr - recLen;
-		this->freeSpace = this->freeSpace - recLen;
+		if(this->slotCnt == 1)
+			this->freeSpace = MAX_SPACE - DPFIXED - recLen;
+		else
+			this->freeSpace = this->usedPtr - (this->slotCnt - 1) * sizeof(slot_t);
+
 		return OK;
 	}
 }
@@ -555,5 +558,8 @@ void HFPage::deleteRec(int offset, int length)
 	relocateRec(offset, length);
 	//update usedPtr, freeSpace ---
 	this->usedPtr = this->usedPtr + length;
-	this->freeSpace = this->freeSpace + length;
+	if(this->slotCnt == 0)
+		this->freeSpace = MAX_SPACE - DPFIXED;
+	else
+		this->freeSpace = this->usedPtr - (this->slotCnt - 1) * sizeof(slot_t);
 }
