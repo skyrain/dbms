@@ -44,9 +44,9 @@ HeapFile::HeapFile( const char *name, Status& returnStatus )
 	// Adds a file entry to the header page
 	// Status add_file_entry(const char* fname, PageId start_page_num);`
 	MINIBASE_DB->add_file_entry(fileName, firstDirPageId);     
-        HFPage *firstPage = (HFPage*) newPage;   
-        firstPage->init(firstDirPageId);   
-        firstPage->setNextPage(INVALID_PAGE);   
+        HFPage *HeadPage = (HFPage*) newPage;   
+        HeadPage->init(firstDirPageId);   
+        HeadPage->setNextPage(INVALID_PAGE);   
 		// unpin the page and set it dirty
         MINIBASE_BM->unpinPage(firstDirPageId, true);    
     }
@@ -60,16 +60,17 @@ HeapFile::HeapFile( const char *name, Status& returnStatus )
 HeapFile::~HeapFile()   
 {   
     Status status;
-    if( file_deleted != 1){   
-	status = deleteFile();   
-    if( status != OK )   
+    if( file_deleted != 1) 
+	status = deleteFile();
+   
+    if( status != OK ){   
         cout << " delete the file unsuccessfully" << endl;   
         delete [] fileName;   
         return;   
-    }else{   
-	delete [] fileName;   
-	}
-	fileName = NULL;
+    }else{
+        fileName = NULL;
+        delete [] fileName;
+    }
 }   
    
 // *************************************
@@ -82,15 +83,15 @@ int HeapFile::getRecCnt()
     HFPage *currPage;   
 	
     // scan from all the page and sum up all the record in to NumofRec
-    while (currPageId != INVALID_PAGE) {   	
+    while (currPageId != INVALID_PAGE){   	
     //  Status pinPage(int PageId_in_a_DB, Page*& page,
     // 	int emptyPage=0, const char *filename=NULL);
-        MINIBASE_BM->pinPage(currPageId,(Page*&)currPage);   
+        MINIBASE_BM->pinPage(currPageId,(Page *&)currPage);   
 	// ??? use RID rid; DataPageInfo dpinfo.recct; 
 	// or make another function in the heapfile page class to get the record count.
         NumofRec += currPage->slotCnt;      
         nextPageId = currPage->getNextPage();      
-        MINIBASE_BM->unpinPage( currPageId );   
+        MINIBASE_BM->unpinPage(currPageId);   
         currPageId = nextPageId;   
     }   
     return NumofRec;   
@@ -110,7 +111,7 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
     // make a new page and add this page in the linked list.
     Status status;
     while(currPageId != INVALID_PAGE){   
-        MINIBASE_BM->pinPage(currPageId, (Page *&) currPage);   
+        MINIBASE_BM->pinPage(currPageId, (Page *&)currPage);   
 	status = currPage->insertRecord(recPtr, recLen, outRid);            
         nextPageId = currPage->getNextPage();    
 	MINIBASE_BM->unpinPage(currPageId,(status == OK));   
@@ -125,10 +126,10 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
     }   
    
     // create a new page and add to the list, then insert the record in that new page.
-    if(currPageId == INVALID_PAGE) {   
+    if(currPageId == INVALID_PAGE){   
         currPageId = endPageId;
-        MINIBASE_BM->pinPage(currPageId, (Page *&) currPage);   
-	MINIBASE_BM->newPage(nextPageId, (Page *&) nextPage);   
+        MINIBASE_BM->pinPage(currPageId, (Page *&)currPage);   
+	MINIBASE_BM->newPage(nextPageId, (Page *&)nextPage);   
         nextPage->init(nextPageId);   
 		
         if(currPage->getNextPage() != INVALID_PAGE){
@@ -137,12 +138,12 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
 		}else{
 			nextPage->setNextPage(INVALID_PAGE);   
 			currPage->setNextPage(nextPageId);   
-			MINIBASE_BM->unpinPage(currPageId,TRUE);  
+			MINIBASE_BM->unpinPage(currPageId, TRUE);  
 			// inser into the new allocated page
 			status = nextPage->insertRecord(recPtr, recLen, outRid);   	  
 			if(status != OK)
 				return DONE;
-			MINIBASE_BM->unpinPage(nextPageId,TRUE);   	
+			MINIBASE_BM->unpinPage(nextPageId, TRUE);   	
 		    }			
     }   
     return OK;   
@@ -188,7 +189,7 @@ Status HeapFile::deleteRecord (const RID& rid)
         }else{   
             MINIBASE_BM->unpinPage(pageId);             
             MINIBASE_BM->freePage(pageId);                 
-            MINIBASE_BM->pinPage(prevPageId, (Page*& )delPage);           
+            MINIBASE_BM->pinPage(prevPageId, (Page*&)delPage);           
             delPage->setNextPage(nextPageId);   
             MINIBASE_BM->unpinPage(prevPageId, TRUE);     
         }   
@@ -233,6 +234,8 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
         dataPageId = nextPageId;   
     }   
    
+    // if the record are not found, ore the length are change,
+    // then the unpdate will fail
     if(flag != 1 && PrevRecLen != recLen){   
         cout<< "invalid undate request" << endl;
 		return DONE;
@@ -305,7 +308,7 @@ Status HeapFile::deleteFile()
     HFPage *currPage;   
     
     // free each node in the linked list
-    while (currPageId != INVALID_PAGE) {   
+    while (currPageId != INVALID_PAGE){   
 	MINIBASE_BM->pinPage(currPageId, (Page*&)currPage);   
         nextPageId = currPage->getNextPage();   
 	MINIBASE_BM->freePage(currPageId);   
@@ -313,7 +316,7 @@ Status HeapFile::deleteFile()
     }   
    
     // Deallocate the file entry and header page.   
-    MINIBASE_DB->delete_file_entry( fileName );   
+    MINIBASE_DB->delete_file_entry(fileName);   
 	
     // set the flag into 1;	
     file_deleted = 1;  
