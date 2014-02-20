@@ -119,9 +119,10 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
 	// if insert success, that means there is enough space in the current page.
         if(status == OK)   
             break;   
-	else{
+	else if(minibase_error.error_index() == NO_SPACE){
 		endPageId = currPageId;   
-		currPageId = nextPageId;   
+		currPageId = nextPageId;
+		minibase_errors.clear_errors();
 	    }
     }   
    
