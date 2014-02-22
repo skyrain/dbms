@@ -29,6 +29,7 @@ Status Scan::getNext(RID& rid, char *recPtr, int& recLen)
     // No record in the current page, scan the next data page.
     if(nxtUserStatus != OK)   
         nextDataPage();   
+
     // no datapage in heapfile, return DONE.
     if(dataPage == NULL)   
         return DONE;   
@@ -88,7 +89,7 @@ Status Scan::nextDataPage()
     Status status;
     if(dataPage == NULL){
 	// get the first record in the data page file and the next page ID
-	MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);     
+	MINIBASE_BM->pinPage(dataPageId, (Page *&)dataPage);     
 	// make sure if the new page has the record
 	status = dataPage->firstRecord(userRid);   
 	if(status != DONE)
@@ -97,7 +98,9 @@ Status Scan::nextDataPage()
       
     PageId nextPageId = INVALID_PAGE; 
     nextPageId = dataPage->getNextPage();   
-    MINIBASE_BM->unpinPage(dataPageId);   
+    status = MINIBASE_BM->unpinPage(dataPageId);   
+    if(status != OK)
+	return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
     dataPage = NULL;   
     dataPageId = nextPageId;   
     if (dataPageId == INVALID_PAGE)   
