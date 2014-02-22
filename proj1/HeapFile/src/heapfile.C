@@ -159,31 +159,31 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
 // delete record from file  
 Status HeapFile::deleteRecord (const RID& rid)   
 {     
-	HFPage *delPage;   
-	PageId pageId = firstDirPageId; 
-	PageId prevPageId = INVALID_PAGE;
-	PageId nextPageId = INVALID_PAGE;
+    HFPage *delPage;   
+    PageId pageId = firstDirPageId; 
+    PageId prevPageId = INVALID_PAGE;
+    PageId nextPageId = INVALID_PAGE;
 	
-    	int flag = 0;
-	Status status;
+    int flag = 0;
+    Status status;
 	
-	// find the data record with rid that required to be deleted
-    	while((flag != 0) && (pageId != INVALID_PAGE)){   
-        	MINIBASE_BM->pinPage(pageId,(Page*&)delPage);      
-        	nextPageId = delPage->getNextPage();   
-        	if(pageId == rid.pageNo){   
-            		status = delPage->deleteRecord(rid);   
-            	if (status != OK){   
-                	MINIBASE_BM->unpinPage(pageId);   
-                	return DONE;
-            	}   
-            flag = 1;   
-            break;   
-        }  		
-	MINIBASE_BM->unpinPage(pageId);     
+    // find the data record with rid that required to be deleted
+    while((flag != 1) && (pageId != INVALID_PAGE)){   
+        MINIBASE_BM->pinPage(pageId,(Page*&)delPage);      
+        nextPageId = delPage->getNextPage();   
+       	if(pageId == rid.pageNo){   
+      		status = delPage->deleteRecord(rid);   
+       		if (status != OK){   
+              		MINIBASE_BM->unpinPage(pageId);   
+               		return DONE;
+      		}   
+        	flag = 1;  
+        	break;  
+	}   		
+        MINIBASE_BM->unpinPage(pageId);     
         prevPageId = pageId;   
         pageId = nextPageId;   
-  }   
+    }   
     
     if(flag == 1){   
         //if (delPage->freeSpace < (MAX_SPACE - dePage->DPFIXED)){    
