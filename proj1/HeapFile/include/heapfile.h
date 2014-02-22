@@ -60,13 +60,16 @@ class HeapFile {
     // delete the file from the database
     Status deleteFile();
 
-
   private:
     friend class Scan;
 
     PageId      firstDirPageId;   // page number of header page
     int         file_deleted;
     char       *fileName;
+    
+    // temp parameter
+    int Cannot_Delete;
+    int test;  
 
     Status newDataPage(DataPageInfo *dpinfop);
     Status findDataPage(const RID& rid, 

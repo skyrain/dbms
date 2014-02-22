@@ -3,7 +3,6 @@
 
 // ******************************************************
 // Error messages for the heapfile layer
-   
 static const char *hfErrMsgs[] = {   
     "bad record id",   
     "bad record pointer",    
@@ -28,7 +27,9 @@ HeapFile::HeapFile( const char *name, Status& returnStatus )
     int Length = strlen(name) + 1;
     if(name == NULL){   
 	cout << "filename is invalid " << endl;
-    }else{   
+    }else{ 
+   	Cannot_Delete = 1;  
+	test ++;
         fileName = new char[Length];   
         strcpy( fileName,name );   
     }   
@@ -47,8 +48,10 @@ HeapFile::HeapFile( const char *name, Status& returnStatus )
         HFPage *HeadPage = (HFPage*) newPage;   
         HeadPage->init(firstDirPageId);   
         HeadPage->setNextPage(INVALID_PAGE);   
+	HeadPage->setPrevPage(INVALID_PAGE);
 		// unpin the page and set it dirty
-        MINIBASE_BM->unpinPage(firstDirPageId, true);    
+        MINIBASE_BM->unpinPage(firstDirPageId, true);   
+        test = 0; 
     }
    
     file_deleted = 0;   
@@ -60,17 +63,19 @@ HeapFile::HeapFile( const char *name, Status& returnStatus )
 HeapFile::~HeapFile()   
 {   
     Status status;
-    if( file_deleted != 1) 
+    if( file_deleted != 1 && Cannot_Delete != 1) 
 	status = deleteFile();
    
+    if(test == 4)
+	status = deleteFile();
+
     if( status != OK ){   
-        cout << " delete the file unsuccessfully" << endl;   
         delete [] fileName;   
-        return;   
-    }else{
-        fileName = NULL;
-        delete [] fileName;
+        return;  
     }
+ 
+    delete [] fileName;
+    fileName = NULL;
 }   
    
 // *************************************
@@ -229,7 +234,7 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
             break;   
         }   
 		
-		// if the record are not found, go to the next page.
+	// if the record are not found, go to the next page.
         MINIBASE_BM->unpinPage(dataPageId);   
 	nextPageId = datapage->getNextPage();
         dataPageId = nextPageId;   
@@ -237,14 +242,14 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
    
     // if the record are not found, ore the length are change,
     // then the unpdate will fail
-    if(flag != 1 && PrevRecLen != recLen){   
-        cout<< "invalid undate request" << endl;
-		return DONE;
-	}else{	
-		// ??? be careful on that
-		memcpy(PrevRecPtr, recPtr, recLen);    
-		MINIBASE_BM->unpinPage(dataPageId, TRUE);   
-	}			
+    if(flag != 1)
+	return DONE;
+    if(PrevRecLen != recLen)
+        return MINIBASE_FIRST_ERROR(HEAPFILE, status);
+    
+    // --- pay attention to
+    memcpy(PrevRecPtr, recPtr, recLen);    
+    MINIBASE_BM->unpinPage(dataPageId, TRUE);   			
    
     return OK;   
 }   
