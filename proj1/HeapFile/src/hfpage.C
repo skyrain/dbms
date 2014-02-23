@@ -562,3 +562,13 @@ void HFPage::deleteRec(int offset, int length)
 	else
 		this->freeSpace = this->usedPtr - (this->slotCnt - 1) * sizeof(slot_t);
 }
+
+int HFPage::returnFreespace()
+{
+	return this->freeSpace;	
+}
+
+short HFPage::getSlotCnt()
+{
+	return this->slotCnt;
+}

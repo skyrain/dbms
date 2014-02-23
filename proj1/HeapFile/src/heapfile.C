@@ -94,7 +94,8 @@ int HeapFile::getRecCnt()
         MINIBASE_BM->pinPage(currPageId,(Page *&)currPage);   
 	// ??? use RID rid; DataPageInfo dpinfo.recct; 
 	// or make another function in the heapfile page class to get the record count.
-        NumofRec += currPage->slotCnt;      
+	
+        NumofRec += currPage->getSlotCnt();      
         nextPageId = currPage->getNextPage();      
         MINIBASE_BM->unpinPage(currPageId);   
         currPageId = nextPageId;   
@@ -112,6 +113,8 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
     HFPage *currPage;   
     HFPage *nextPage;   
 	
+    if (recLen > 1000)
+	return MINIBASE_FIRST_ERROR(HEAPFILE,NO_SPACE);
     // Find a data page to insert the record, if it can not find a existed one,
     // make a new page and add this page in the linked list.
     Status status;
@@ -163,6 +166,7 @@ Status HeapFile::deleteRecord (const RID& rid)
     PageId pageId = firstDirPageId; 
     PageId prevPageId = INVALID_PAGE;
     PageId nextPageId = INVALID_PAGE;
+    int freeSpace;	
 	
     int flag = 0;
     Status status;
@@ -188,7 +192,8 @@ Status HeapFile::deleteRecord (const RID& rid)
     if(flag == 1){   
         //if (delPage->freeSpace < (MAX_SPACE - dePage->DPFIXED)){    
 	// hard code the freespace because the DPFIXED is in the private member of HFPage class
-	if(delPage->freeSpace < 1000){
+	freeSpace = delPage->returnFreespace();
+	if(freeSpace < 1000){
             MINIBASE_BM->unpinPage(pageId, TRUE);         
 	// if there is space in that page, just unpin the page from the frame, 
 	// otherwise, that page will be deleted from the list.
@@ -218,6 +223,9 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
     PageId dataPageId = firstDirPageId;
     PageId nextPageId;   
     
+    if(recLen > 1000)
+	return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_UPDATE);
+
     Status status;
     while((flag != 1) && (dataPageId != INVALID_PAGE)){   
         MINIBASE_BM->pinPage(dataPageId,(Page*&)datapage);      
@@ -245,13 +253,12 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
     if(flag != 1)
 	return DONE;
     if(PrevRecLen != recLen)
-        return MINIBASE_FIRST_ERROR(HEAPFILE, status);
-    
+        return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_UPDATE);
     // --- pay attention to
     memcpy(PrevRecPtr, recPtr, recLen);    
     MINIBASE_BM->unpinPage(dataPageId, TRUE);   			
-   
-    return OK;   
+
+    return OK;
 }   
    
 // ***************************************************
@@ -264,22 +271,22 @@ Status HeapFile::getRecord (const RID& rid, char *recPtr, int& recLen)
     int flag = 0;   
    
     Status status; 
-    while((flag != 0) && (dataPageId != INVALID_PAGE)){   
+    while((flag != 1) && (dataPageId != INVALID_PAGE)){   
         MINIBASE_BM->pinPage(dataPageId,(Page*&)datapage);
         nextPageId = datapage->getNextPage();   
         if (dataPageId == rid.pageNo){   
             status = datapage->getRecord(rid, recPtr, recLen);   
             if (status != OK){   
                 MINIBASE_BM->unpinPage(dataPageId);   
-                return DONE;
-            }else{   
+                return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+            }else{  
 		 flag = 1; 
-		 cout << "record page" << rid.pageNo << "has found" <<endl;
-		 }				
-        }else{   
-	     MINIBASE_BM->unpinPage(dataPageId);         
-	     dataPageId = nextPageId;  
-	     }			
+		 //cout << "record page " << rid.pageNo << " has found " <<endl;
+ 	    }		 				
+        }
+   
+	MINIBASE_BM->unpinPage(dataPageId);         
+	dataPageId = nextPageId;  			
     }    
     if(flag == 1)   
         return OK;   

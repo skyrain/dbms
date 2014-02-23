@@ -18,7 +18,7 @@ const int EMPTY_SLOT   =  -1;
 
 class HFPage {
 
-  public:
+  protected:
     struct slot_t {
         short   offset;  
         short   length;    // equals EMPTY_SLOT if slot is not in use
@@ -46,12 +46,14 @@ class HFPage {
     slot_t    slot[1];     // first element of slot array.
 
     char      data[MAX_SPACE - DPFIXED]; 
-
+  public:
     void init(PageId pageNo);   // initialize a new page
     void dumpPage();            // dump contents of a page
 
     PageId getNextPage();       // returns value of nextPage
     PageId getPrevPage();       // returns value of prevPage
+    
+    short getSlotCnt();    
 
     void setNextPage(PageId pageNo);    // sets value of nextPage to pageNo
     void setPrevPage(PageId pageNo);    // sets value of prevPage to pageNo
@@ -78,7 +80,8 @@ class HFPage {
 
       // returns a pointer to the record with RID rid
     Status returnRecord(RID rid, char*& recPtr, int& recLen);
-
+    
+    int returnFreespace(void);
       // returns the amount of available space on the page
     int    available_space(void);
 
