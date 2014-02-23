@@ -150,7 +150,7 @@ Status HFPage::deleteRecord(const RID& rid)
 	// fill in the body
 	//--- deal with errors ----
 	if(rid.pageNo < 0 || rid.slotNo < 0)
-		return MINIBASE_FIRST_ERROR(HEAPFILE, BAD_RID);
+		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
 		//return FAIL;
 	if(rid.slotNo >= this->slotCnt)	
 		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
@@ -252,7 +252,7 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 {
 	// fill in the body
 	if(rid.slotNo < 0 || rid.pageNo < 0)
-		return MINIBASE_FIRST_ERROR(HEAPFILE, BAD_RID);
+		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
 		//return FAIL;
 	if(rid.slotNo >= this->slotCnt)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
@@ -383,7 +383,7 @@ void HFPage::modifySlot(int slotNo, int recLen)
 {
 	//--- add new slot ----
 	slot_t newSlot;
-	newSlot.offset = this->usedPtr - recLen + 1;
+	newSlot.offset = this->usedPtr - recLen;
 	newSlot.length = recLen;
 	//--- insert new slot into HFpage ---
 	if(slotNo == 0)
@@ -477,7 +477,6 @@ void HFPage::shrinkSlotDir()
 			else
 				moreEmptyTailSlot = false;
 		}
-			
 		if(this->slot[0].length == EMPTY_SLOT && this->slotCnt == 1)
 		{
 			this->slot[0].offset = INVALID_SLOT;
@@ -533,7 +532,7 @@ void HFPage::updateMovingSlot(slot_t mSlot, int offset)
 
 void HFPage::relocateRec(int offset, int length)
 {		
-	while(offset != this->usedPtr + 1)
+	while(offset != this->usedPtr)
 	{
 		//--- allocate the nearest back record's slot ---
 		slot_t backSlot = findBackRec(offset);
