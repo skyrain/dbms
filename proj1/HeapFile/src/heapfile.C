@@ -62,17 +62,14 @@ HeapFile::HeapFile( const char *name, Status& returnStatus )
 // Destructor
 HeapFile::~HeapFile()   
 {   
-    Status status;
-    if( file_deleted != 1 && Cannot_Delete != 1) 
+    Status status = OK;
+    if( (file_deleted != 1 && Cannot_Delete != 1) || test == 4){
 	status = deleteFile();
-   
-    if(test == 4)
-	status = deleteFile();
-
-    if( status != OK ){   
-        cout << " delete the file unsuccessfully" << endl;   
-        delete [] fileName;   
-        return;  
+    
+        if(status != OK){   
+            delete [] fileName;   
+            return;  
+        }
     }
  
     delete [] fileName;
@@ -294,23 +291,39 @@ Status HeapFile::deleteFile()
     if(file_deleted == 1)   
         return DONE; 
       
+    file_deleted = 1;
     PageId currPageId = firstDirPageId;
     PageId nextPageId = INVALID_PAGE;   
     HFPage *currPage;   
     
+    MINIBASE_BM->pinPage(currPageId, (Page*&)currPage);
+    nextPageId = currPage->getNextPage();
+    MINIBASE_BM->unpinPage(currPageId);   
+    currPageId = nextPageId;
+   
+    Status status;
     // free each node in the linked list
     while (currPageId != INVALID_PAGE){   
-	MINIBASE_BM->pinPage(currPageId, (Page*&)currPage);   
-        nextPageId = currPage->getNextPage();   
-	MINIBASE_BM->freePage(currPageId);   
+	status = MINIBASE_BM->pinPage(currPageId, (Page*&)currPage);   
+	if(status != OK)
+	    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+        nextPageId = currPage->getNextPage();  
+	status = MINIBASE_BM->unpinPage(currPageId); 
+	if(status != OK)
+	    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+	status = MINIBASE_BM->freePage(currPageId);   
+	if(status != OK)
+	    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 	currPageId = nextPageId;   
     }   
    
-    // Deallocate the file entry and header page.   
-    MINIBASE_DB->delete_file_entry(fileName);   
+    // delete tje  file entry  
+    status = MINIBASE_DB->delete_file_entry(fileName);   
+    if(status != OK)
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 	
+    Cannot_Delete = 0;  
     // set the flag into 1;	
-    file_deleted = 1;  
     return OK;   
 }     
 
