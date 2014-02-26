@@ -16,6 +16,7 @@
 #include "heap_driver.h"
 #include "buf.h"
 
+using namespace std;
 
 static const int namelen = 24;
 struct Rec
@@ -48,7 +49,7 @@ Status HeapDriver::runAllTests()
 {
     Status answer;
     minibase_globals = new SystemDefs(answer,dbpath,logpath,
-                                      100,500,100,"Clock");
+                                      1000,500,100,"Clock");
     if ( answer == OK )
         answer = TestDriver::runAllTests();
 
@@ -82,7 +83,6 @@ int HeapDriver::test1()
         status = FAIL;
     }
 
-
     if ( status == OK )
       {
         cout << "  - Add " << choice << " records to the file\n";
@@ -92,7 +92,8 @@ int HeapDriver::test1()
             sprintf(rec.name, "record %i",i);
 
             status = f.insertRecord((char *)&rec, reclen, rid);
-            //cout << "To insert record " << rid << endl;
+        
+			//			cout << rid.slotNo << " ";
 
             if (status != OK)
                 cerr << "*** Error inserting record " << i << endl;
@@ -115,6 +116,7 @@ int HeapDriver::test1()
       // In general, a sequential scan won't be in the same order as the
       // insertions.  However, we're inserting fixed-length records here, and
       // in this case the scan must return the insertion order.
+
     Scan* scan = 0;
     if ( status == OK )
       {
@@ -126,9 +128,11 @@ int HeapDriver::test1()
         else if ( MINIBASE_BM->getNumUnpinnedBuffers() == MINIBASE_BM->getNumBuffers() )
           {
             cerr << "*** The heap-file scan has not pinned the first page\n";
+			cerr << MINIBASE_BM->getNumUnpinnedBuffers() - MINIBASE_BM->getNumBuffers() << endl;
             status = FAIL;
           }
       }
+
     if ( status == OK )
       {
         int len, i = 0;
@@ -136,7 +140,7 @@ int HeapDriver::test1()
 
         while ( (status = scan->getNext(rid, (char *)&rec, len)) == OK )
           {
-            if ( len != reclen )
+			if ( len != reclen )
               {
                 cerr << "*** Record " << i << " had unexpected length " << len
                      << endl;
@@ -174,8 +178,10 @@ int HeapDriver::test1()
 
         if ( status == DONE )
           {
-            if ( MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers() )
-                cerr << "*** The heap-file scan has not unpinned its page after finishing\n";
+            if ( MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers() ) {
+		  		cerr << MINIBASE_BM->getNumUnpinnedBuffers() << endl;
+				cerr << MINIBASE_BM->getNumBuffers() << endl;
+                cerr << "*** The heap-file scan has not unpinned its page after finishing\n"; }
             else if ( i == choice )
                 status = OK;
             else
@@ -226,13 +232,17 @@ int HeapDriver::test2()
             //cout << "rid is " << rid << endl;
             if ( i & 1 )        // Delete the odd-numbered ones.
               {
-                //cout << "To delete record " << rid << endl;
+                // cout << "To delete record " << rid << endl;
                 status = f.deleteRecord( rid );
+				// cout << " To delete record " << rid.slotNo << endl;
                 if ( status != OK )
                   {
+
                     cerr << "*** Error deleting record " << i << endl;
+					minibase_errors.show_errors();
                     break;
                   }
+
               }
             ++i;
           }
@@ -479,7 +489,7 @@ int HeapDriver::test4()
         cerr << "*** Scan missed " << numRecs << " records\n";
       else
         status = OK;
-     }
+	}
    }
 
    delete scan;
@@ -530,7 +540,6 @@ int HeapDriver::test5()
 
     delete scan;
 
-
     if ( status == OK )
       {
         cout << "  - Try to insert a record that's too long\n";
@@ -538,8 +547,6 @@ int HeapDriver::test5()
         status = f.insertRecord( record, MINIBASE_PAGESIZE, rid );
         testFailure( status, HEAPFILE, "Inserting a too-long record" );
       }
-
-
 
     if ( status == OK )
         cout << "  Test 5 completed successfully.\n";
@@ -549,5 +556,22 @@ int HeapDriver::test5()
 
 int HeapDriver::test6()
 {
-    return TRUE;
+    cout << "\n Test 6: Test delete file\n";
+    Status status;
+
+    HeapFile f("file_1", status);
+    if (status != OK)
+        cerr << "*** Error opening heap file\n";
+
+    if (status == OK) {
+      cout << "  Try to delete the heap file" << endl;
+      status = f.deleteFile();
+      if (status != OK)
+	cerr << "*** Error deleting the heap file ***" << endl;
+    }
+
+    if (status == OK)
+      cout << " Test 6 completed successfully" << endl;
+
+    return (status == OK);
 }

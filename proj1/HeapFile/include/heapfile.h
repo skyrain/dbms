@@ -74,8 +74,7 @@ class HeapFile {
     Status newDataPage(DataPageInfo *dpinfop);
     Status findDataPage(const RID& rid, 
 			PageId &rpDirPageId, HFPage *&rpdirpage, 
-			PageId &rpDataPageId,HFPage *&rpdatapage, 
-			RID &rpDataPageRid);
+			PageId &rpDataPageId,HFPage *&rpdatapage);
     Status allocateDirSpace(struct DataPageInfo * dpinfop,
                             PageId &allocDirPageId,
                             RID &allocDataPageRid);

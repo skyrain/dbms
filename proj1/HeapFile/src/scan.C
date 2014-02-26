@@ -26,21 +26,22 @@ Scan::~Scan()
    
 Status Scan::getNext(RID& rid, char *recPtr, int& recLen)   
 {   
-    // No record in the current page, scan the next data page.
-    if(nxtUserStatus != OK)   
-        nextDataPage();   
+    if(nxtUserStatus != OK || dataPage == NULL){
+        // No record in the current page, scan the next data page.
+        if(nxtUserStatus != OK)   
+            nextDataPage();   
+        // no datapage in heapfile, return DONE.
+        if(dataPage == NULL)   
+            return DONE;   
+    }
 
-    // no datapage in heapfile, return DONE.
-    if(dataPage == NULL)   
-        return DONE;   
-    
     Status status;
     rid = userRid;        
     status  = dataPage->getRecord(rid, recPtr, recLen);   
     if(status != OK)   
         return  MINIBASE_CHAIN_ERROR(HEAPFILE, status);   
     nxtUserStatus = dataPage->nextRecord(rid, userRid);   
-   
+    
     return status;   
 }
 
@@ -103,13 +104,15 @@ Status Scan::nextDataPage()
 	return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
     dataPage = NULL;   
     dataPageId = nextPageId;   
+    // get the first record if the page is not a null page
     if (dataPageId == INVALID_PAGE)   
         return DONE;   
-    
-    MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);         
-    nxtUserStatus = dataPage->firstRecord(userRid);    
-    if(nxtUserStatus != OK)
-        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    else{
+        MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);         
+        nxtUserStatus = dataPage->firstRecord(userRid);    
+        if(nxtUserStatus != OK)
+            return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    }
 
     return OK;     
 }   
