@@ -36,9 +36,9 @@ Define the heapfile and all the operations on a heapfile.
   returns pinned directory page and pinned data page of the specified user record If the user record cannot be found, rpdirpage and rpdatapage are returned as NULL pointers.
 					
 - Anything unusual in your implementation
-
   
-  In implementation of heap file, I decide not to use the directory page structure, as a matter of fact that there is only a small number of data page in the heap file, also 
+  In implementation of heap file, when insert a record, I give the tast that decide whether there is space for a record to the hfpage. 
+  Secondly, I decide not to use the directory page structure, as a matter of fact that there is only a small number of data page in the heap file, also 
   it's a single user database, one doubly linked list is more robust and easier to implemented, directory page will increase the speed of insert by checking the dpinfo, but the time which are saved is
   insignificant and maintenaning the directory page also needs extra disk I/O and easy to corrupt.
 
