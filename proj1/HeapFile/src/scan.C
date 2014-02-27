@@ -35,6 +35,8 @@ Status Scan::getNext(RID& rid, char *recPtr, int& recLen)
             return DONE;   
     }
 
+    // get the userRid from the current page, and get the data record by this rid. 
+    // then set the nxtUserStatus to represent whether there is record in the current page.
     Status status;
     rid = userRid;        
     status  = dataPage->getRecord(rid, recPtr, recLen);   
@@ -54,6 +56,7 @@ Status Scan::init(HeapFile *hf)
    
 Status Scan::reset()   
 {   
+    // if there is data page in the memory, them free it.
     if (dataPage != NULL)  
         MINIBASE_BM->unpinPage(dataPageId);   
       
@@ -96,7 +99,8 @@ Status Scan::nextDataPage()
 	if(status != DONE)
 	    return OK;
     }
-      
+    
+    // if neither the data page and page ID is empty, get the next page ID from the current page. 
     PageId nextPageId = INVALID_PAGE; 
     nextPageId = dataPage->getNextPage();   
     status = MINIBASE_BM->unpinPage(dataPageId);   
@@ -107,6 +111,7 @@ Status Scan::nextDataPage()
     // get the first record if the page is not a null page
     if (dataPageId == INVALID_PAGE)   
         return DONE;   
+    // if there is next page, get the first record of the next page
     else{
         MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);         
         nxtUserStatus = dataPage->firstRecord(userRid);    
