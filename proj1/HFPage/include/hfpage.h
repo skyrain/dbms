@@ -53,7 +53,7 @@ class HFPage {
     PageId getNextPage();       // returns value of nextPage
     PageId getPrevPage();       // returns value of prevPage
     
-    short getSlotCnt();    
+    short getRecCnt();    
 
     void setNextPage(PageId pageNo);    // sets value of nextPage to pageNo
     void setPrevPage(PageId pageNo);    // sets value of prevPage to pageNo

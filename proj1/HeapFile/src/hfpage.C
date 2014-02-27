@@ -10,15 +10,15 @@ void dumpPage();
 // return/set particular value of HFPage as specified by method name
 PageId getNextPage();
 PageId getPrevPage();
-???short getSlotCnt();
+short getRecCnt();
 void setNextPage(PageId pageNo);    // sets value of nextPage to pageNo
 void setPrevPage(PageId pageNo);    // sets value of prevPage to pageNo
-??PageId page_no() { return curPage;} // returns the page number
+PageId page_no() { return curPage;} // returns the page number
 Status firstRecord(RID& firstRid);
 Status nextRecord (RID curRid, RID& nextRid);
 Status getRecord(RID rid, char *recPtr, int& recLen);
 Status returnRecord(RID rid, char*& recPtr, int& recLen);
-??int returnFreespace(void);
+int returnFreespace(void);
 
 // inserts a new record pointed to by recPtr with length recLen onto
 // the page, returns RID of record.
@@ -633,7 +633,21 @@ int HFPage::returnFreespace()
 	return this->freeSpace;	
 }
 
-short HFPage::getSlotCnt()
+short HFPage::getRecCnt()
 {
-	return this->slotCnt;
+	//--- check if empty slot already exist ---
+	int recCount = 0;
+	if(this->slot[0].length != EMPTY_SLOT)
+		recCount++;
+
+	for(int i = 1; i < this->slotCnt; i++)
+	{
+		slot_t *tmpSlot = (slot_t *)&(this->data[sizeof(slot_t) * (i - 1)]);
+		if(tmpSlot->length != EMPTY_SLOT)
+		{
+			recCount++;
+		}
+	}
+	return recCount;
+
 }

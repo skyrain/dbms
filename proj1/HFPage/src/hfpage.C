@@ -1,3 +1,75 @@
+/*-------------- comments ------------------------------------
+  - Overall description of your algorithms and data structures
+
+// initialize a new page, assign initial values to its property.
+void init(PageId pageNo);
+
+// output each property of the page
+void dumpPage();
+
+// return/set particular value of HFPage as specified by method name
+PageId getNextPage();
+PageId getPrevPage();
+short getRecCnt();
+void setNextPage(PageId pageNo);    // sets value of nextPage to pageNo
+void setPrevPage(PageId pageNo);    // sets value of prevPage to pageNo
+PageId page_no() { return curPage;} // returns the page number
+Status firstRecord(RID& firstRid);
+Status nextRecord (RID curRid, RID& nextRid);
+Status getRecord(RID rid, char *recPtr, int& recLen);
+Status returnRecord(RID rid, char*& recPtr, int& recLen);
+int returnFreespace(void);
+
+// inserts a new record pointed to by recPtr with length recLen onto
+// the page, returns RID of record.
+Status insertRecord(char *recPtr, int recLen, RID& rid);
+	:This method will call the following three methods:
+	1.void modifySlot(int slotNo, int recLen);
+		:modify the corresponding slot' information
+	2.void addData(int slotNo, char* recPtr, int recLen);
+		:set the corresponding data[] area as record according to slot infor		mation.
+	3.int getEmptySlotNo();
+		:judge whehter already exist empty slot for new record,
+		 return: -1 no empty slot, need to allocate new slot 
+		 return: non-position value - empty slot no 
+	
+// delete the record with the specified rid
+Status deleteRecord(const RID& rid);
+	:This method will call the following four methods:
+	1.int getRecordOffset(RID rid);
+		:according to rid's slotNo get the record position in data[]. 
+	2.int cleanSlot(RID rid);
+		:clean the slot corresponding to the deleted record, 
+		then return record length.
+	3.void shrinkSlotDir();
+		:shrink slot directory after deletion, if the deleted record corresp		onds to the last slot, delete slots which are empty from the last sl		ot to the beginning until come across a non-empty slot.
+	4.void deleteRec(int offset, int length);
+		:delete record, (call relocateRecord method)relocate records beind t		he deleted record, update slot dir & update usedPtr, freeSpace.
+		4.1 void relocateRecord(int offset, int length);
+			:relocate records behind the deleted record, i.e. move these rec			ord forward to cover the deleted record space.
+			:call (updateMovingSlot method)
+			4.1.1 void updateMovingSlot(slot_t mSlot, int offset);
+				:update the slots whose record are moved for covering the					deleted reocrd space
+			4.1.2 slot_t findBackRec(int offset);
+				:find the slot which represents the first record that is aft				er the deleted record.
+				input: deleted record offset
+		
+// returns the amount of available space on the page
+int    available_space(void);
+	:according to whehter HFPage has empty slot, return correct available sp	ace
+
+// return bool value according to whether the HFPage is empty
+bool empty(void);
+
+- Anything unusual in your implementation
+In implementation of HFPage, we put the slot directory in the front of data[], and the slot directory grows from start of data[] to the end of data[]. At the same time, we put the record from the end of data[] to the start of data[]. 
+
+- What functionalities not supported well
+All functionalities are fully supported.
+--------------------------------------------------------------
+*/
+
+
 #include <iostream>
 #include <stdlib.h>
 #include <memory.h>
@@ -6,11 +78,6 @@
 #include "heapfile.h"
 #include "buf.h"
 #include "db.h"
-
-/*---- ?? ---
-"//return" means confusion on the return error code value
-*/
-
 
 // **********************************************************
 // page class constructor
@@ -284,7 +351,7 @@ Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 {
 	// fill in the body
 	if(rid.slotNo < 0 || rid.pageNo < 0)
-		return MINIBASE_FIRST_ERROR(HEAPFILE, BAD_RID);
+		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
 		//return FAIL;
 	if(rid.slotNo >= this->slotCnt)
 		return MINIBASE_FIRST_ERROR(HEAPFILE, INVALID_SLOTNO);
@@ -367,7 +434,6 @@ int HFPage::getEmptySlotNo()
 	{
 		for(int i = 1; i < this->slotCnt; i++)
 		{
-			//--- cast correct?? ---
 			slot_t *tmpSlot = (slot_t *)&(this->data[sizeof(slot_t) * (i - 1)]);
 			if(tmpSlot->length == EMPTY_SLOT)
 			{
@@ -568,7 +634,21 @@ int HFPage::returnFreespace()
 	return this->freeSpace;	
 }
 
-short HFPage::getSlotCnt()
+short HFPage::getRecCnt()
 {
-	return this->slotCnt;
+	//--- check if empty slot already exist ---
+	int recCount = 0;
+	if(this->slot[0].length != EMPTY_SLOT)
+		recCount++;
+
+	for(int i = 1; i < this->slotCnt; i++)
+	{
+		slot_t *tmpSlot = (slot_t *)&(this->data[sizeof(slot_t) * (i - 1)]);
+		if(tmpSlot->length != EMPTY_SLOT)
+		{
+			recCount++;
+		}
+	}
+	return recCount;
+
 }

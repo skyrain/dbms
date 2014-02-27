@@ -9,7 +9,7 @@ Define the heapfile and all the operations on a heapfile.
    
   HeapFile::~HeapFile(): deconstructor of heapfile, delete the filename and call the deleteFile to delete the heap file.  
 
-  int HeapFile::getRecCnt(): it will return number of records in heap file by calling the getSlotCnt() by iterating all data pages.
+  int HeapFile::getRecCnt(): it will return number of records in heap file by calling the getRecCnt() by iterating all data pages.
 
   Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid): insert a record in the heapfile, return OK if insert successfully, return error code if not.
   It will find a existing data page in the heapfile which has enough space for that record. If can not find any data page, then it will
@@ -140,9 +140,9 @@ int HeapFile::getRecCnt()
     //  Status pinPage(int PageId_in_a_DB, Page*& page,
     // 	int emptyPage=0, const char *filename=NULL);
         MINIBASE_BM->pinPage(currPageId,(Page *&)currPage);   
-	// ??? use RID rid; DataPageInfo dpinfo.recct; 
+	//  use RID rid; DataPageInfo dpinfo.recct; 
 	// or make another function in the heapfile page class to get the record count.
-        NumofRec += currPage->getSlotCnt();      
+        NumofRec += currPage->getRecCnt();      
         nextPageId = currPage->getNextPage();      
         MINIBASE_BM->unpinPage(currPageId);   
         currPageId = nextPageId;   

@@ -12,8 +12,7 @@ Status Scan::firstDataPage(): get the first dataPageId from the heapfile meta da
 Status Scan::nextDataPage(): get the next data page, return OK if success, return DONE if there isn't any data page
 
 - Anything unusual in your implementation
-In inplementation of Scanner, there are several possible return value for the nextDataPage() function, if any of these
-situations are not handled properly, the scan can not process. Because it's sequencial scan, only one doubly linked list is faster than the directory structure.
+Because it's sequencial scan, we use only one doubly linked list and it is faster than the directory structure.
 
 - What functionalities not supported well
 All functionalities are fully supported.

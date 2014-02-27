@@ -1,3 +1,21 @@
+/*
+   -------------------------------------------
+Partners: 
+	Tianyu Qiu - tianyuq@email.arizona.edu
+	Xudong Weng - weng@email.arizona.edu	
+
+Comments:
+	1.Overall description of your algorithms and data structures
+	We put the corresponding algorithms and data structures in the head of s	ource code: hfpage.C, scan.C, heapfile.C
+
+	2.Anything unusual in your implementation
+	We put the corresponding unusual implementations in the head of correspo	nding source code:
+	hfpage.C, scan.C, heapfile.C
+
+	3.What functionalities not supported well
+	All functionalities are fully supported.
+  -----------------------------------------------
+*/
 
 Date: 02/14/14
 Writer: Young-K. Suh
