@@ -433,7 +433,6 @@ int HFPage::getEmptySlotNo()
 	{
 		for(int i = 1; i < this->slotCnt; i++)
 		{
-			//--- cast correct?? ---
 			slot_t *tmpSlot = (slot_t *)&(this->data[sizeof(slot_t) * (i - 1)]);
 			if(tmpSlot->length == EMPTY_SLOT)
 			{
