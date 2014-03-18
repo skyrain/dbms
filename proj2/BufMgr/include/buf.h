@@ -16,6 +16,9 @@
 #define HTSIZE 7
 // Hash Table size
 
+#define HTA 1
+#define HTB 1
+
 //---- Buffer descriptor ---
 typedef struct BufDescr
 {
