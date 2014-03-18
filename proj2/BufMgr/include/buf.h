@@ -16,76 +16,123 @@
 #define HTSIZE 7
 // Hash Table size
 
+//---- Buffer descriptor ---
+typedef struct BufDescr
+{
+	PageId pageId;
+	int pinCount;
+	bool dirtyBit;
+}BufDescr;
 
+//--- hashtable bucket ----
+typedef struct Bucket
+{
+	PageId pageId;
+	int frameId;
+	struct Bucket* next;
+}Bucket;
+
+//--- hash table ----------
+typedef struct HashTable
+{
+	Bucket* directory[HTSIZE];	
+}HashTable;
 
 /*******************ALL BELOW are purely local to buffer Manager********/
 
 // You could add more enums for internal errors in the buffer manager.
 enum bufErrCodes  {HASHMEMORY, HASHDUPLICATEINSERT, HASHREMOVEERROR, HASHNOTFOUND, QMEMORYERROR, QEMPTY, INTERNALERROR, 
-			BUFFERFULL, BUFMGRMEMORYERROR, BUFFERPAGENOTFOUND, BUFFERPAGENOTPINNED, BUFFERPAGEPINNED};
+	BUFFERFULL, BUFMGRMEMORYERROR, BUFFERPAGENOTFOUND, BUFFERPAGENOTPINNED, BUFFERPAGEPINNED};
 
 class Replacer; // may not be necessary as described below in the constructor
 
 class BufMgr {
 
-private: 
-   unsigned int    numBuffers;
-   // fill in this area
-public:
-    Page* bufPool; // The actual buffer pool
+	private: 
+		unsigned int    numBuffers;
+		BufDescr bufDescr[NUMBUF];	
+		HashTable hashTable;
+		
+		//--- hash calculation ----------------
+		//--- calculate the bucket should be --
+		//--- according to pageId -------------
+		int hash(PageId pageId);
 
-    BufMgr (int numbuf, Replacer *replacer = 0); 
-   	// Initializes a buffer manager managing "numbuf" buffers.
-	// Disregard the "replacer" parameter for now. In the full 
-  	// implementation of minibase, it is a pointer to an object
-	// representing one of several buffer pool replacement schemes.
+		//--- delete hash bucket ---------------
+		void hashRemove(PageId pageId, int frameId);
 
-    ~BufMgr();           // Flush all valid dirty pages to disk
+		//--- insert hash bucket ---------------
+		void hashPut(PageId pageId, int frameId);
 
-    Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage);
-        // Check if this page is in buffer pool, otherwise
-        // find a frame for this page, read in and pin it.
-        // also write out the old page if it's dirty before reading
-        // if emptyPage==TRUE, then actually no read is done to bring
-        // the page
+		//--- get frame id ----------------------
+		//--- return: -1 not page not in pool ---
+		//--- otherwise return the frameId ------
+		int hashGetFrameId(PageId pageId);
+	public:
+		Page* bufPool; // The actual buffer pool
+		
+		//--- initialize: 1. bufDescr[]; 2.hashtable; ---
+		BufMgr (int numbuf, Replacer *replacer = 0); 
+		// Initializes a buffer manager managing "numbuf" buffers.
+		// Disregard the "replacer" parameter for now. In the full 
+		// implementation of minibase, it is a pointer to an object
+		// representing one of several buffer pool replacement schemes.
 
-    Status unpinPage(PageId globalPageId_in_a_DB, int dirty, int hate);
-        // hate should be TRUE if the page is hated and FALSE otherwise
-        // if pincount>0, decrement it and if it becomes zero,
-        // put it in a group of replacement candidates.
-        // if pincount=0 before this call, return error.
 
-    Status newPage(PageId& firstPageId, Page*& firstpage, int howmany=1); 
-        // call DB object to allocate a run of new pages and 
-        // find a frame in the buffer pool for the first page
-        // and pin it. If buffer is full, ask DB to deallocate 
-        // all these pages and return error
+		~BufMgr();           // Flush all valid dirty pages to disk
 
-    Status freePage(PageId globalPageId); 
-        // User should call this method if it needs to delete a page
-        // this routine will call DB to deallocate the page 
+		Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage);
+		// Check if this page is in buffer pool, otherwise
+		// find a frame for this page, read in and pin it.
+		// also write out the old page if it's dirty before reading
+		// if emptyPage==TRUE, then actually no read is done to bring
+		// the page
 
-    Status flushPage(PageId pageid);
-        // Used to flush a particular page of the buffer pool to disk
-        // Should call the write_page method of the DB class
+		Status unpinPage(PageId globalPageId_in_a_DB, int dirty, int hate);
+		// hate should be TRUE if the page is hated and FALSE otherwise
+		// if pincount>0, decrement it and if it becomes zero,
+		// put it in a group of replacement candidates.
+		// if pincount=0 before this call, return error.
 
-    Status flushAllPages();
-	// Flush all pages of the buffer pool to disk, as per flushPage.
+		Status newPage(PageId& firstPageId, Page*& firstpage, int howmany=1); 
+		// call DB object to allocate a run of new pages and 
+		// find a frame in the buffer pool for the first page
+		// and pin it. If buffer is full, ask DB to deallocate 
+		// all these pages and return error
 
-    /*** Methods for compatibility with project 1 ***/
-    Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename);
-	// Should be equivalent to the above pinPage()
-	// Necessary for backward compatibility with project 1
+		Status freePage(PageId globalPageId); 
+		// User should call this method if it needs to delete a page
+		// this routine will call DB to deallocate the page 
 
-    Status unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename);
-	// Should be equivalent to the above unpinPage()
-	// Necessary for backward compatibility with project 1
-    
-    unsigned int getNumBuffers() const { return numBuffers; }
-	// Get number of buffers
+		Status flushPage(PageId pageid);
+		// Used to flush a particular page of the buffer pool to disk
+		// Should call the write_page method of the DB class
 
-    unsigned int getNumUnpinnedBuffers();
-	// Get number of unpinned buffers
+		Status flushAllPages();
+		// Flush all pages of the buffer pool to disk, as per flushPage.
+
+		/*** Methods for compatibility with project 1 ***/
+		Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename);
+		// Should be equivalent to the above pinPage()
+		// Necessary for backward compatibility with project 1
+
+		Status unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename);
+		// Should be equivalent to the above unpinPage()
+		// Necessary for backward compatibility with project 1
+
+		unsigned int getNumBuffers() const { return numBuffers; }
+		// Get number of buffers
+
+		unsigned int getNumUnpinnedBuffers();
+		// Get number of unpinned buffers
+
+		//----- replacement policy ---------------------------
+		//---- input: the wanted page id;---------------------
+		//--- page: page pointer(no need of allocation) ------
+		//--- return value -----------------------------------
+		//--- page_id the page which replaced --
+		//--- page points to the page get from disk ---------
+		Status replace(PageId &page_id, Page *& page);
 };
 
 #endif
