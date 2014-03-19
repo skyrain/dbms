@@ -45,6 +45,7 @@ typedef struct HashTable
 typedef struct ReplaceList
 {
 	int frameId;
+	int pinCount; // the value after unPin
 	bool hate;
 	struct ReplaceList* next;
 }ReplaceList;
@@ -140,6 +141,10 @@ class BufMgr {
 		// Get number of unpinned buffers
 
 		//----- replacement policy ---------------------------
+		
+		//--- find the node previous location in MRU or LRU list-
+		//--- if is a new node return NULL ----------------------
+		ReplaceList* findList(ReplaceList* node);
 		
 		//---- every time unPin, add new node to LRU or MRU list ---
 		//---- or modify the node along with its new access time & -
