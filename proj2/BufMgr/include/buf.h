@@ -131,7 +131,7 @@ class BufMgr {
 
 		//----- replacement policy ---------------------------
 		//--- return frameId----------------------------------
-		int replace(PageId &page_id, Page *& page);
+		int replace();
 };
 
 #endif
