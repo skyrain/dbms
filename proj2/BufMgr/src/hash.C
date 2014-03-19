@@ -18,7 +18,7 @@ Status BufMgr::hashRemove(PageId pageId)
 	int dirId = this->hash(pageId);
 
 	//--- scan the target list and delete -
-	Bucket* bWalker = directory[dirId];
+	Bucket* bWalker = this->hashTable->directory[dirId];
 	Bucket* bWalkerFree = bWalker;
 	//--- if is empty list ---
 	if(bWalker == NULL) return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
@@ -28,7 +28,7 @@ Status BufMgr::hashRemove(PageId pageId)
 	{
 		//--- relocate bucket head position --
 		bWalker = bWalker->next;
-		directory[dirId] = bWalker;
+		this->hashTable->directory[dirId] = bWalker;
 		//--- free deleted space ---
 		free(bWalkerFree);
 		return OK;
@@ -60,7 +60,7 @@ Status BufMgr::hashPut(PageId pageId, int frameId)
 	int dirId = this->hash(pageId);
 	
 	//--- insert bucket -----------------
-	Bucket* bWalker = directory[dirId];
+	Bucket* bWalker = this->hashTable->directory[dirId];
 	
 	if(bWalker == NULL) //--- 1. if is empty bucket list ---
 	{
@@ -73,7 +73,7 @@ Status BufMgr::hashPut(PageId pageId, int frameId)
 		bWalker->frameId = frameId;
 		bWalker->next = NULL;
 
-		directory[dirId] = bWalker;
+		this->hashTable->directory[dirId] = bWalker;
 	}
 	else //--- 2. if is not empty bucket list ---
 	{
@@ -112,7 +112,7 @@ Status BufMgr::hashGetFrameId(PageId pageId, int& frameId)
 	int dirId = this->hash(pageId);
 	
 	//--- check the bucket list ---
-	Bucket* bWalker = directory[dirId];
+	Bucket* bWalker = this->hashTable->directory[dirId];
 	while(bWalker != NULL)
 	{
 		if(bWalker->pageId == pageId)
