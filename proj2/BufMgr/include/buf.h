@@ -45,7 +45,6 @@ typedef struct HashTable
 typedef struct ReplaceList
 {
 	int frameId;
-	int pinCount; // the value after unPin
 	bool hate;
 	struct ReplaceList* next;
 }ReplaceList;
