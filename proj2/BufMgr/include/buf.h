@@ -68,9 +68,9 @@ class BufMgr {
 		Status hashPut(PageId pageId, int frameId);
 
 		//--- get frame id ----------------------
-		//--- return: -1 not page not in pool ---
-		//--- otherwise return the frameId ------
-		int hashGetFrameId(PageId pageId);
+		//--- input: pageId, frameId(arbitary value,---
+		//--- changed to valid value after execution)--
+		Status hashGetFrameId(PageId pageId, int& frameId);
 	public:
 		Page* bufPool; // The actual buffer pool
 		
