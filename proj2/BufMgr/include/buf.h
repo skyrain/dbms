@@ -62,7 +62,7 @@ class BufMgr {
 		int hash(PageId pageId);
 
 		//--- delete hash bucket ---------------
-		void hashRemove(PageId pageId, int frameId);
+		void hashRemove(PageId pageId);
 
 		//--- insert hash bucket ---------------
 		void hashPut(PageId pageId, int frameId);
