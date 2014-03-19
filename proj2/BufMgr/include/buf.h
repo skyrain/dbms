@@ -62,10 +62,10 @@ class BufMgr {
 		int hash(PageId pageId);
 
 		//--- delete hash bucket ---------------
-		void hashRemove(PageId pageId);
+		Status hashRemove(PageId pageId);
 
 		//--- insert hash bucket ---------------
-		void hashPut(PageId pageId, int frameId);
+		Status hashPut(PageId pageId, int frameId);
 
 		//--- get frame id ----------------------
 		//--- return: -1 not page not in pool ---
@@ -130,12 +130,8 @@ class BufMgr {
 		// Get number of unpinned buffers
 
 		//----- replacement policy ---------------------------
-		//---- input: the wanted page id;---------------------
-		//--- page: page pointer(no need of allocation) ------
-		//--- return value -----------------------------------
-		//--- page_id the page which replaced --
-		//--- page points to the page get from disk ---------
-		Status replace(PageId &page_id, Page *& page);
+		//--- return frameId----------------------------------
+		int replace(PageId &page_id, Page *& page);
 };
 
 #endif
