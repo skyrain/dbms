@@ -144,7 +144,7 @@ class BufMgr {
 		//---- every time unPin, add new node to LRU or MRU list ---
 		//---- or modify the node along with its new access time & -
 		//----- & its love/hate value(love conquers hate)        ---
-		Status addReplaceList(ReplaceList node);
+		Status addReplaceList(ReplaceList* node);
 
 		//--- replace ----
 		//--- input: frameId(arbitary value, changed after execution)--
