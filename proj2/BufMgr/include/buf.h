@@ -144,11 +144,13 @@ class BufMgr {
 		
 		//--- find the node previous location in MRU or LRU list-
 		//--- if is a new node return NULL ----------------------
+		//--- input node's next should be NULL -------------------
 		ReplaceList* findList(ReplaceList* node);
 		
 		//---- every time unPin, add new node to LRU or MRU list ---
 		//---- or modify the node along with its new access time & -
 		//----- & its love/hate value(love conquers hate)        ---
+		//--- input node's next should be NULL -------------------
 		Status addReplaceList(ReplaceList* node);
 
 		//--- replace ----
