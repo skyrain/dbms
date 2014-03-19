@@ -1,7 +1,5 @@
 //---- hash table 初始化， directory array 赋值为NULL －－－
 
-
-
 //--- hash function implementation ---
 
 //--- hash calculation ----------------
@@ -14,7 +12,7 @@ int BufMgr::hash(PageId pageId)
 }
 
 //--- delete hash bucket ---------------
-void BufMgr::hashRemove(PageId pageId)
+Status BufMgr::hashRemove(PageId pageId)
 {
 	//--- get the target directory id ---
 	int dirId = this->hash(pageId);
@@ -23,7 +21,7 @@ void BufMgr::hashRemove(PageId pageId)
 	Bucket* bWalker = directory[dirId];
 	Bucket* bWalkerFree = bWalker;
 	//--- if is empty list ---
-	if(bWalker == NULL) return;
+	if(bWalker == NULL) return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
 	//--- else not empty list ---
 	//--- 1. check head ------
 	if(bWalker->pageId == pageId)
@@ -33,8 +31,7 @@ void BufMgr::hashRemove(PageId pageId)
 		directory[dirId] = bWalker;
 		//--- free deleted space ---
 		free(bWalkerFree);
-		return;
-		
+		return OK;
 	}
 	else //2. not at head ---
 	{
@@ -48,14 +45,16 @@ void BufMgr::hashRemove(PageId pageId)
 				bWalker->next = bWalker->next->next;
 				//--- free useless memory ------------
 				free(bWalkerFree);
-				return;
+				return OK;
 			}
 		}
 	}
+	//--- if not found ----
+	return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
 }
 
 //--- insert hash bucket ---------------
-void BufMgr::hashPut(PageId pageId, int frameId)
+Status BufMgr::hashPut(PageId pageId, int frameId)
 {
 	//--- get the target directory id ---
 	int dirId = this->hash(pageId);
@@ -66,6 +65,10 @@ void BufMgr::hashPut(PageId pageId, int frameId)
 	if(bWalker == NULL) //--- 1. if is empty bucket list ---
 	{
 		bWalker = (Bucket* )calloc(1, sizeof(Bucket));
+		//--- check if allocate successfully ------
+		if(bWalker == NULL)
+			return MINIBASE_FIRST_ERROR(BUFMGR, HASHMEMORY);
+
 		bWalker->pageId = pageId;
 		bWalker->frameId = frameId;
 		bWalker->next = NULL;
@@ -74,20 +77,36 @@ void BufMgr::hashPut(PageId pageId, int frameId)
 	}
 	else //--- 2. if is not empty bucket list ---
 	{
+		//--- if list head is duplicate -------
+		if(bWalker->pageId == pageId && bWalker->frameId == frameId)
+			return MINIBASE_FIRST_ERROR(BUFMGR, HASHDUPLICATEINSERT);
+		//--- else check whether following entries are duplicate ---
 		while(bWalker->next != NULL)
+		{
 			bWalker = bWalker->next;
 
+			if(bWalker->pageId == pageId && bWalker->frameId == frameId)
+				return MINIBASE_FIRST_ERROR(BUFMGR, HASHDUPLICATEINSERT);
+		}
+
 		bWalker->next = (Bucket* )calloc(1, sizeof(Bucket));
+
+		//--- check allocation whether successfully ---
+		if(bWalker->next == NULL)
+			return MINIBASE_FIRST_ERROR(BUFMGR, HASHMEMORY);
+
 		bWalker->next->pageId = pageId;
 		bWalker->next->frameId = frameId;
 		bWalker->next->next = NULL;
 	}
+	return OK;
 }
 
+
 //--- get frame id ----------------------
-//--- return: -1 not page not in pool ---
-//--- otherwise return the frameId ------
-int BufMgr::hashGetFrameId(PageId pageId)
+//--- input: pageId, frameId(arbitary value,---
+//--- changed to valid value after execution)--
+Status BufMgr::hashGetFrameId(PageId pageId, int& frameId)
 {
 	//--- get the target directory id ---
 	int dirId = this->hash(pageId);
@@ -97,10 +116,13 @@ int BufMgr::hashGetFrameId(PageId pageId)
 	while(bWalker != NULL)
 	{
 		if(bWalker->pageId == pageId)
-			return bWalker->frameId;
+		{
+			frameId = bWalker->frameId;
+			return OK;
+		}
 
 		bWalker = bWalker->next;
 	}
 
-	return -1;
+	return MINIBASE_FIRST_ERROR(BUFMGR, HASHNOTFOUND);
 }
