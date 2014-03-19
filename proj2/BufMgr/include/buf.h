@@ -130,8 +130,8 @@ class BufMgr {
 		// Get number of unpinned buffers
 
 		//----- replacement policy ---------------------------
-		//--- return frameId----------------------------------
-		int replace();
+		//--- input: frameId(arbitary value, changed after execution)--
+		Status replace(int& frameId);
 };
 
 #endif
