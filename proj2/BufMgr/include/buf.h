@@ -41,6 +41,14 @@ typedef struct HashTable
 	Bucket* directory[HTSIZE];	
 }HashTable;
 
+//--- replacement policy ---
+typedef struct ReplaceList
+{
+	int frameId;
+	bool hate;
+	struct ReplaceList* next;
+}ReplaceList;
+
 /*******************ALL BELOW are purely local to buffer Manager********/
 
 // You could add more enums for internal errors in the buffer manager.
@@ -55,6 +63,8 @@ class BufMgr {
 		unsigned int    numBuffers;
 		BufDescr bufDescr[NUMBUF];	
 		HashTable hashTable;
+		ReplaceList* LRU;
+		ReplaceList* MRU;
 		
 		//--- hash calculation ----------------
 		//--- calculate the bucket should be --
@@ -130,6 +140,13 @@ class BufMgr {
 		// Get number of unpinned buffers
 
 		//----- replacement policy ---------------------------
+		
+		//---- every time unPin, add new node to LRU or MRU list ---
+		//---- or modify the node along with its new access time & -
+		//----- & its love/hate value(love conquers hate)        ---
+		Status addReplaceList(ReplaceList node);
+
+		//--- replace ----
 		//--- input: frameId(arbitary value, changed after execution)--
 		Status replace(int& frameId);
 };
