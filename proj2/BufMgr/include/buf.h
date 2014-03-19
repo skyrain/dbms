@@ -62,7 +62,7 @@ class BufMgr {
 	private: 
 		unsigned int    numBuffers;
 		BufDescr bufDescr[NUMBUF];	
-		HashTable hashTable;
+		HashTable *hashTable;
 		ReplaceList* LRU;
 		ReplaceList* MRU;
 		
