@@ -52,10 +52,19 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
 		bufDescr[i].dirtyBit = false;
 	}
 	
-	// ??? alloc the replacer
-	// ??? init hash table
+	// init hash table
+	hashTable = (HashTable *)malloc(sizeof(HashTable));
+	for(i = 0; i < HTSIZE; i++){
+		hashTable->directory[i] = (Bucket *)malloc(sizeof(Bucket));
+		hashTable->directory[i]->frameId = -1;
+		hashTable->directory[i]->pageId = INVALID_PAGE;
+		hashTable->directory[i]->next = NULL;
+		
+	}
 	
-
+	// ??? alloc the replacer
+	LRU = NULL;
+	MRU = NULL;
 
 	// allocate the space for bufDescr and bulPool object, but haven't construct yet.
 	/*
@@ -83,6 +92,9 @@ BufMgr::~BufMgr(){
 	// delete the mem space 
 	// delete [] bufDescr;
 	delete [] bufPool;
+	LRU = NULL;
+	MRU = NULL;
+	hashTable = NULL;
 	// delete replacer;
 }
 
