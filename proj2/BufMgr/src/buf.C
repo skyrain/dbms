@@ -94,6 +94,14 @@ BufMgr::~BufMgr(){
 	delete [] bufPool;
 	LRU = NULL;
 	MRU = NULL;
+	
+	int i;
+	for(i = 0; i < HTSIZE; i++){
+		free(hashTable->directory[i]);
+		hashTable->directory[i] = NULL;
+	}
+	
+	free(hashTable);
 	hashTable = NULL;
 	// delete replacer;
 }
