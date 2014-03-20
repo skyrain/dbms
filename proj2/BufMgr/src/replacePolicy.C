@@ -58,14 +58,14 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 			}
 			else // else MRU is not empty list ---
 			{
-				while(walker->next != NULL)
-					walker = walker->next;
+				ReplaceList* oldList = this->MRU;
 
-				walker->next = (ReplaceList* )calloc(1, sizeof(ReplaceList));
-				if(walker->next == NULL)
+				this->MRU = (ReplaceList* )calloc(1, sizeof(ReplaceList));
+				if(this->MRU == NULL)
 					return MINIBASE_FIRST_ERROR(BUFMGR, QMEMORYERROR);
 
-				memcpy(walker->next, node, sizeof(ReplaceList));
+				memcpy(this->MRU, node, sizeof(ReplaceList));
+				this->MRU->next = oldList;
 				//--- free the input node ---
 				free(node);
 				return OK;
@@ -74,32 +74,12 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 		else //--- else input is old node --
 		{
 			//--- if previous is in MRU ---
-			//--- move node to MRU tail ---
+			//--- move node to MRU head ---
 			if(oldNode->hate)
 			{
 				//--- check MRU head ---
 				if(walker->frameId == node->frameId)
 				{
-					this->MRU = walker->next;
-					//--- if only one element ---
-					if(this->MRU == NULL)
-					{
-						this->MRU = walker;
-						return OK;
-					}
-
-					//-- free previous node ---
-					free(walker);
-
-					ReplaceList* newWalker = this->MRU:
-						while(newWalker->next != NULL)
-							newWalker = newWalker->next;
-
-					newWalker->next = (ReplaceList* )calloc(1, sizeof(ReplaceList));
-					if(newWalker->next == NULL)
-						return MINIBASE_FIRST_ERROR(BUFMGR, QMEMORYERROR);
-
-					memcpy(newWalker->next, node, sizeof(ReplaceList));
 					//--- free input node ---
 					free(node);	
 					return OK;
@@ -118,15 +98,18 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 						deleteNode = walker->next;
 						walker->next = walker->next->next;
 						free(deleteNode);
+						break;
 					}
 					walker = walker->next;
 				}
-				walker->next = (ReplaceList* )calloc(1, sizeof(ReplaceList));
-				if(walker->next == NULL)
+				
+				ReplaceList* oldList= this->MRU;
+				this->MRU = (ReplaceList* )calloc(1, sizeof(ReplaceList));
+				if(this->MRU == NULL)
 					return MINIBASE_FIRST_ERROR(BUFMGR, QMEMORYERROR);
 
-
-				memcpy(walker->next, node, sizeof(ReplaceList));
+				memcpy(this->MRU, node, sizeof(ReplaceList));
+				this->MRU->next = oldList;
 				//--- free input node ---
 				free(node);
 				return OK;
@@ -184,13 +167,11 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 				if(walker->next == NULL)
 					return MINIBASE_FIRST_ERROR(BUFMGR, QMEMORYERROR);
 
-
 				memcpy(walker->next, node, sizeof(ReplaceList));
 				walker->next->hate = false;
 				//--- free input node ---
 				free(node);
 				return OK;
-
 			}
 		}
 	}
@@ -349,11 +330,6 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 	}
 }
 
- "Not enough memory to allocate queue node",
-   20   "Poping an empty queue",
-QMEMORYERROR, QEMPTY
-
-//--- LRU:pop head, MRU: pop tail ---
 //---- input: frameId(arbitary value, changed after execution)---
 Status BufMgr::replace(int& frameId)
 {
@@ -361,13 +337,33 @@ Status BufMgr::replace(int& frameId)
 	ReplaceList* walker = this->MRU;
 	if(this->MRU != NULL)
 	{
+		if(this->bufDescr[this->MRU->frameId].pinCount == 0)
+		{
+			frameId = this->MRU->frameId;
+			this->MRU = this->MRU->next;
+			free(walker);
+			return OK;
+		}
 
+		ReplaceList* deleteWalker = walker->next;
+		while(walker->next != NULL)
+		{
+			if(this->bufDescr[walker->next->frameId].pinCount == 0)
+			{
+				deleteWalker = walker->next;
+				frameId = walker->next->frameId;
+				walker->next = walker->next->next;
+				free(deleteWalker);
+				return OK;
+			}
+			walker = walker->next;
+		}
 	}
 	//--- check LRU:love list ----
 	walker = this->LRU;
 	if(this->LRU != NULL)
 	{
-		if(this->bufDescr[this->lRU->frameId].pinCount == 0)
+		if(this->bufDescr[this->MRU->frameId].pinCount == 0)
 		{
 			frameId = this->LRU->frameId;
 			this->LRU = this->LRU->next;
