@@ -2,6 +2,8 @@
 /*************** Implementation of the Buffer Manager Layer ******************/
 /*****************************************************************************/
 
+// replacer ???
+
 
 #include "buf.h"
 
@@ -31,66 +33,383 @@ static const char* bufErrMsgs[] = {
 static error_string_table bufTable(BUFMGR,bufErrMsgs);
 
 //*************************************************************
-//** This is the implementation of BufMgr
+// This is the implementation of BufMgr
+// Initializes a buffer manager managing "numbuf" buffers.
+// Disregard the "replacer" parameter for now. In the full 
+// implementation of minibase, it is a pointer to an object
+// representing one of several buffer pool replacement schemes.
 //************************************************************
-
 BufMgr::BufMgr (int numbuf, Replacer *replacer) {
-  // put your code here
+	// put your code here
+	
+	// get the number of buffers, and allocate a memory space for the buffer pool.
+	unsigned int i;
+	numBuffers = numbuf;
+	bufPool = new Page[numBuffers];
+	for(i = 0; i < numBuffers; i++){
+		bufDescr[i].pageId = INVALID_PAGE;
+		bufDescr[i].pinCount = 0;
+		bufDescr[i].dirtyBit = false;
+	}
+	
+	// ??? alloc the replacer
+	// ??? init hash table
+	
+
+
+	// allocate the space for bufDescr and bulPool object, but haven't construct yet.
+	/*
+	bufDescr = ()malloc(numBuffers * sizeof());
+	bulPool = (Page*)malloc(numBuffers * sizeof(Page));
+	for(i = 0; i < numBuffers; i++){
+		//construct each object for each object in the bulPool and bufDescr
+		new(bulPool + i) page;
+		new(bufDescr + i) page;
+	}
+	*/
 }
 
 //*************************************************************
-//** This is the implementation of ~BufMgr
+// This is the implementation of ~BufMgr
+// Flush all valid dirty pages to disk
 //************************************************************
 BufMgr::~BufMgr(){
-  // put your code here
+	// put your code here
+	// flush all the dirty pages.
+	Status status;
+	status = flushAllPages();
+	if(status != OK)
+		 MINIBASE_CHAIN_ERROR(BUFMGR,status);
+	// delete the mem space 
+	// delete [] bufDescr;
+	delete [] bufPool;
+	// delete replacer;
 }
 
 //*************************************************************
-//** This is the implementation of pinPage
+// This is the implementation of pinPage
+// Check if this page is in buffer pool, otherwise
+// find a frame for this page, read in and pin it.
+// also write out the old page if it's dirty before reading
+// if emptyPage==TRUE, then actually no read is done to bring
+// the page
 //************************************************************
-Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
-  // put your code here
-  return OK;
+Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) { 
+	// put your code here	
+	// Try to find the Given ID page in the buf pool.
+	
+ 	PageId bufId = -1;
+	PageId prevPage = INVALID_PAGE;
+	bool needtoWrite = FALSE;
+	Status status;
+	// lookup the hash table for the bufID 
+	status = hashGetFrameId(PageId_in_a_DB, bufId);	
+     	
+	if(status != OK){
+                if(minibase_errors.error_index() == HASHNOTFOUND)
+                	bufId = -1;
+		else
+                        return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
+        }
+	
+	// if not find the page in the buf pool, call the replacer to replace a page.
+	if(bufId == -1){
+		status = replace(bufId);
+		
+		// replacer fail to find a valid page, then return an error.
+		if(status != OK || bufId < 0 || bufId >= (int)numBuffers)
+		{
+			bufId = 0;
+			page = NULL;
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+		}
+		
+		
+		// replacer find a non-empty page, then remember the previous page, else use it directly. 	
+		// also check the Descr uf the replacing page needs to flush to disk.
+		prevPage = bufDescr[bufId].pageId;
+		needtoWrite = bufDescr[bufId].dirtyBit;
+		
+		// delete the old element from the hashtable
+		/* ****************** hashRemove *********************/
+		status = hashRemove(prevPage);
+		if(status != OK)
+			return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
+		
+		// update the buf descriptor for the replacing page
+		bufDescr[bufId].pageId = INVALID_PAGE;
+		// ??? Need not to set the pinCount to 0, becuase the replaced one must have 0 pin.
+		bufDescr[bufId].dirtyBit = false;
+		// hash insert
+		/* ******************hashPut********************/
+		status = hashPut(PageId_in_a_DB, bufId);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);	
+		
+		bufDescr[bufId].pageId = PageId_in_a_DB;
+		bufDescr[bufId].dirtyBit = false;
+		// ??? pin count add one if insertion is successful
+		bufDescr[bufId].pinCount ++;
+		
+		if(prevPage != INVALID_PAGE && needtoWrite)
+		{
+			// check if it needs to unpin and the DB error ???.
+			status = MINIBASE_DB->write_page(prevPage, &bufPool[bufId]);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+		}
+	
+		// check if the page is not empty, if it is, then read the page content into buf.
+		// otherwise, return the empty page directly.
+		if(emptyPage == FALSE)
+		{
+			// check the DB error ??? if return error, return the info to replacer.	
+			// rollback the previous operations. bufDescr and hash
+			status = MINIBASE_DB->read_page(PageId_in_a_DB, &bufPool[bufId]);	
+			if(status != OK)
+			{
+				MINIBASE_CHAIN_ERROR(BUFMGR, status);
+				bufDescr[bufId].pageId = INVALID_PAGE;
+				bufDescr[bufId].dirtyBit = false;
+				if(bufDescr[bufId].pinCount > 0)
+					bufDescr[bufId].pinCount --;
+				else
+					bufDescr[bufId].pinCount = 0;				
+				
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+			}
+		}
+	
+		// finally, return the actual data page.
+		page = &bufPool[bufId];
+		return OK;
+	}
+
+	// if the given page in the buffer pool
+	if(bufId >= 0 && bufId < (int)numBuffers)
+	{
+		page = &bufPool[bufId];
+		bufDescr[bufId].pinCount++;
+	}	
+	
+	return OK;
 }//end pinPage
 
 //*************************************************************
-//** This is the implementation of unpinPage
+// This is the implementation of unpinPage
+// hate should be TRUE if the page is hated and FALSE otherwise
+// if pincount>0, decrement it and if it becomes zero,
+// put it in a group of replacement candidates.
+// if pincount=0 before this call, return error.
 //************************************************************
 Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
-  // put your code here
-  return OK;
+	// put your code here
+	// try to find the given ID page in the buf pool
+	PageId bufId = -1;
+	Status status;
+	ReplaceList *node = NULL;
+	
+	// find the upin page in Hash table
+	status = hashGetFrameId(page_num, bufId);
+	
+	if(status != OK){
+                if(minibase_errors.error_index() == HASHNOTFOUND)
+                        return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+                else
+                        return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
+        }
+	
+	// Check all the possible bad bufId
+        if(bufId < 0 || bufId >= (int)numBuffers)
+                return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+
+	if(bufDescr[bufId].pageId == INVALID_PAGE)
+		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTPINNED);
+		
+	if(bufDescr[bufId].pinCount == 0)
+		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTPINNED);
+	// if the page is in the buffer pool, then update the bufDescr. 
+	bufDescr[bufId].pinCount --;
+	// ??? what if the pinCount == 0? Do I need to inform the replacer?
+
+	if(dirty == TRUE)
+		bufDescr[bufId].dirtyBit = true;	
+		
+	// attention, must call the replacer after all the bufDescr had been updated.
+	// inform the replace list
+	node = (ReplaceList*)malloc(sizeof(ReplaceList));
+	node->frameId = bufId;
+	node->hate = hate;
+	// add this node to the replace list.
+	status = addReplaceList(node);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
+	
+	return OK;
 }
 
 //*************************************************************
-//** This is the implementation of newPage
+// This is the implementation of newPage
+// call DB object to allocate a run of new pages and
+// find a frame in the buffer pool for the first page              
+// and pin it. If buffer is full, ask DB to deallocate
+// all these pages and return error
 //************************************************************
 Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany) {
-  // put your code here
-  return OK;
+	// put your code here
+	Status status_1, status_2;
+	// call DB to allocate a run of new pages
+	status_1 = MINIBASE_DB->allocate_page(firstPageId, howmany);
+	if(status_1 != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status_1);
+	// pin this empty page, set the empty flag as true;
+	status_1 = pinPage(firstPageId, firstpage, TRUE);
+	
+	// if pin unsuccessful, undo all the operations.
+	if(status_1 != OK)
+	{
+		MINIBASE_FIRST_ERROR(BUFMGR, BUFMGRMEMORYERROR);
+		status_2 = MINIBASE_DB->deallocate_page(firstPageId, howmany);
+		if(status_2 != OK )
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status_2);
+		return status_2;
+	}
+	
+	return OK;
 }
 
 //*************************************************************
-//** This is the implementation of freePage
+// This is the implementation of freePage
+// User should call this method if it needs to delete a page
+// this routine will call DB to deallocate the page
 //************************************************************
 Status BufMgr::freePage(PageId globalPageId){
-  // put your code here
-  return OK;
+	// put your code here
+	PageId bufId = -1;
+	Status status;	
+
+	status = hashGetFrameId(globalPageId, bufId);
+	// if the page not in the buffer pool. deallocate it.
+	if(status != OK){
+		if(minibase_errors.error_index() == HASHNOTFOUND)
+		{	
+			status = MINIBASE_DB->deallocate_page(globalPageId);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR,status);
+			minibase_errors.clear_errors();
+		}
+		else
+			return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
+	}	
+	
+	//Then the page is in the buffer pool.
+	// bad hash result
+	if(bufId < 0 || bufId >= (int)numBuffers)
+		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+	
+	// if the page is still pinned, return error.
+	if(bufDescr[bufId].pinCount > 1)
+		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
+
+	// set the bufDescr as free
+	bufDescr[bufId].pinCount --; 
+	bufDescr[bufId].pageId = INVALID_PAGE;
+	bufDescr[bufId].dirtyBit = false;
+	
+	// then deallocate the page
+	status = MINIBASE_DB->deallocate_page(globalPageId);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return OK;
 }
 
 //*************************************************************
-//** This is the implementation of flushPage
+// This is the implementation of flushPage
+// Used to flush a particular page of the buffer pool to disk
+// Should call the write_page method of the DB class
 //************************************************************
 Status BufMgr::flushPage(PageId pageid) {
-  // put your code here
-  return OK;
+	// put your code here
+	PageId bufId = -1;
+	Status status;
+	
+	// find the page first
+	status = hashGetFrameId(pageid, bufId);	
+	
+	// pageid not found in the buffer pool
+	if(status != OK){
+		if(minibase_errors.error_index() == HASHNOTFOUND)
+	        	return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+		else
+			return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
+	}
+
+        // bad hash result
+        if(bufId < 0 || bufId >= (int)numBuffers)
+                return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+	
+	// page is pinned, then return error	
+	if(bufDescr[bufId].pinCount != 0)
+		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
+	
+	// flush the page into disk, and update the hash table and bufDescr
+	status = MINIBASE_DB->write_page(bufDescr[bufId].pageId, &bufPool[bufId]);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	status = hashRemove(pageid);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BUFMGR, status);
+
+	// update the bufDescr
+	bufDescr[bufId].pageId = INVALID_PAGE;
+	bufDescr[bufId].dirtyBit = false;
+	
+	return OK;
 }
     
 //*************************************************************
-//** This is the implementation of flushAllPages
+// This is the implementation of flushAllPages
+// Flush all pages of the buffer pool to disk, as per flushPage.
 //************************************************************
 Status BufMgr::flushAllPages(){
-  //put your code here
-  return OK;
+	// put your code here
+	// write all the pages to the disk if it's dirty.
+	int pinned = 0;
+	unsigned int i;
+	Status status;
+	//PageId pageid;
+	
+	// flush all the page to disk no matter what	
+	for(i = 0; i < numBuffers; i++)
+	{	
+		// if buffer pool i is empty or the page is not dirty,
+		//  then continue to next buffer frame. which will save disk I/O
+		if(bufDescr[i].pageId == INVALID_PAGE || bufDescr[i].dirtyBit == false)
+			continue;
+		// have page is pinned
+		if(bufDescr[i].pinCount != 0)
+			pinned ++;
+		// flush the page into disk, and update the hash table and bufDescr
+		status = MINIBASE_DB->write_page(bufDescr[i].pageId, &bufPool[i]);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		status = hashRemove(bufDescr[i].pageId);
+		if(status != OK)
+			return MINIBASE_FIRST_ERROR(BUFMGR, status);
+
+		// update the bufDescr
+		bufDescr[i].pageId = INVALID_PAGE;
+		bufDescr[i].dirtyBit = false;
+	}
+
+	// some of the unpinned page has been flushed to the disk
+	if(pinned != 0)
+		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
+	
+	return OK;
 }
 
 
@@ -112,9 +431,17 @@ Status unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename){
 }
 
 //*************************************************************
-//** This is the implementation of getNumUnpinnedBuffers
+// This is the implementation of getNumUnpinnedBuffers
+// Get number of unpinned buffers
 //************************************************************
 unsigned int BufMgr::getNumUnpinnedBuffers(){
-  //put your code here
-  return 0;
+	//put your code here
+	unsigned int ans;
+	unsigned int i;
+	for(i = 0; i < numBuffers; i++)
+	{
+		if(bufDescr[i].pinCount == 0)
+			ans ++;
+	}
+	return ans;
 }
