@@ -57,17 +57,6 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
 	
 	LRU = NULL;
 	MRU = NULL;
-
-	// allocate the space for bufDescr and bulPool object, but haven't construct yet.
-	/*
-	bufDescr = ()malloc(numBuffers * sizeof());
-	bulPool = (Page*)malloc(numBuffers * sizeof(Page));
-	for(i = 0; i < numBuffers; i++){
-		//construct each object for each object in the bulPool and bufDescr
-		new(bulPool + i) page;
-		new(bufDescr + i) page;
-	}
-	*/
 }
 
 //*************************************************************
@@ -463,3 +452,4 @@ unsigned int BufMgr::getNumUnpinnedBuffers(){
 	}
 	return ans;
 }
+
