@@ -2,9 +2,6 @@
 /*************** Implementation of the Buffer Manager Layer ******************/
 /*****************************************************************************/
 
-// replacer ???
-
-
 #include "buf.h"
 
 
@@ -92,13 +89,19 @@ BufMgr::~BufMgr(){
 	
 	int i;
 	for(i = 0; i < HTSIZE; i++){
-		free(hashTable->directory[i]);
-		hashTable->directory[i] = NULL;
+		if(hashTable->directory[i] != NULL)
+		{
+			HashTable* hWalker = hashTable->directory[i];
+			while(hWalker!= NULL)
+			{
+				HashTable* deleteWalker = hwalker;
+				hWalker = hWalker->next;
+				free(deleteWaler);
+			}
+		}
 	}
-	
 	free(hashTable);
 	hashTable = NULL;
-	// delete replacer;
 }
 
 //*************************************************************
