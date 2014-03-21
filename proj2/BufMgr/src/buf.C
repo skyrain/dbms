@@ -114,7 +114,10 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
      	
 	if(status != OK){
                 if(minibase_errors.error_index() == HASHNOTFOUND)
-                	bufId = -1;
+                {	
+			bufId = -1;
+			minibase_errors.clear_errors();
+		}
 		else
                         return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
         }
