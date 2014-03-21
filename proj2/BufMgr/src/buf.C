@@ -80,12 +80,12 @@ BufMgr::~BufMgr(){
 	for(i = 0; i < HTSIZE; i++){
 		if(hashTable->directory[i] != NULL)
 		{
-			HashTable* hWalker = hashTable->directory[i];
+			Bucket* hWalker = hashTable->directory[i];
 			while(hWalker!= NULL)
 			{
-				HashTable* deleteWalker = hwalker;
+				Bucket* deleteWalker = hWalker;
 				hWalker = hWalker->next;
-				free(deleteWaler);
+				free(deleteWalker);
 			}
 		}
 	}
@@ -597,7 +597,7 @@ ReplaceList* BufMgr::findList(ReplaceList* node)
 		walker = walker->next;
 	}
 	//--- check LRU list ---
-	walekr = this->LRU;
+	walker = this->LRU;
 	while(walker != NULL)
 	{
 		if(walker->frameId == node->frameId)
@@ -710,7 +710,7 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 					//-- free previous node ---
 					free(walker);
 
-					ReplaceList* newWalker = this->LRU:
+					ReplaceList* newWalker = this->LRU;
 						while(newWalker->next != NULL)
 							newWalker = newWalker->next;
 
@@ -865,7 +865,7 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 					//-- free previous node ---
 					free(walker);
 
-					ReplaceList* newWalker = this->LRU:
+					ReplaceList* newWalker = this->LRU;
 						while(newWalker->next != NULL)
 							newWalker = newWalker->next;
 
