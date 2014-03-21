@@ -55,14 +55,9 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
 	// init hash table
 	hashTable = (HashTable *)malloc(sizeof(HashTable));
 	for(i = 0; i < HTSIZE; i++){
-		hashTable->directory[i] = (Bucket *)malloc(sizeof(Bucket));
-		hashTable->directory[i]->frameId = -1;
-		hashTable->directory[i]->pageId = INVALID_PAGE;
-		hashTable->directory[i]->next = NULL;
-		
+		hashTable->directory[i] = NULL;
 	}
 	
-	// ??? alloc the replacer
 	LRU = NULL;
 	MRU = NULL;
 
