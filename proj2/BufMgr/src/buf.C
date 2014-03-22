@@ -142,10 +142,11 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
 		
 		// delete the old element from the hashtable
 		/* ****************** hashRemove *********************/
-		status = hashRemove(prevPage);
-		if(status != OK)
-			return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
-		
+		if(prevPage != INVALID_PAGE){	
+			status = hashRemove(prevPage);
+			if(status != OK)
+				return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
+		}
 		// update the buf descriptor for the replacing page
 		bufDescr[bufId].pageId = INVALID_PAGE;
 		// ??? Need not to set the pinCount to 0, becuase the replaced one must have 0 pin.
@@ -966,7 +967,18 @@ Status BufMgr::replace(int& frameId)
 			walker = walker->next;
 		}
 	}
-
-	return MINIBASE_FIRST_ERROR(BUFMGR, QEMPTY);
+	
+	// ??? both empty, check if there is empty frame.
+	unsigned int index;
+	for(index = 0; index < numBuffers; index++){
+		if(bufDescr[index].pinCount == 0)
+			frameId = (int)index;
+			break;
+	}
+	
+	if(index < numBuffers)
+		return OK;	
+	else
+		return MINIBASE_FIRST_ERROR(BUFMGR, QEMPTY); // ??? the error should be no candidate
 }
 
