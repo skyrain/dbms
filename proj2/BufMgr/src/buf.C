@@ -945,7 +945,7 @@ Status BufMgr::replace(int& frameId)
 	walker = this->LRU;
 	if(this->LRU != NULL)
 	{
-		if(this->bufDescr[this->MRU->frameId].pinCount == 0)
+		if(this->bufDescr[this->LRU->frameId].pinCount == 0)
 		{
 			frameId = this->LRU->frameId;
 			this->LRU = this->LRU->next;
