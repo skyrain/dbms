@@ -915,6 +915,16 @@ Status BufMgr::addReplaceList(ReplaceList* node)
 //---- input: frameId(arbitary value, changed after execution)---
 Status BufMgr::replace(int& frameId)
 {
+	//  check if there is empty frame.
+	unsigned int index;
+	for(index = 0; index < numBuffers; index++){
+		if(bufDescr[index].pageId == INVALID_PAGE)
+		{
+			frameId = (int)index;
+			return OK;
+		}
+	}
+	
 	//--- check MRU:hate list first --
 	ReplaceList* walker = this->MRU;
 	if(this->MRU != NULL)
@@ -968,17 +978,6 @@ Status BufMgr::replace(int& frameId)
 		}
 	}
 	
-	// ??? both empty, check if there is empty frame.
-	unsigned int index;
-	for(index = 0; index < numBuffers; index++){
-		if(bufDescr[index].pinCount == 0)
-			frameId = (int)index;
-			break;
-	}
-	
-	if(index < numBuffers)
-		return OK;	
-	else
-		return MINIBASE_FIRST_ERROR(BUFMGR, QEMPTY); // ??? the error should be no candidate
+	return MINIBASE_FIRST_ERROR(BUFMGR, QEMPTY); // ??? the error should be no candidate
 }
 
