@@ -73,8 +73,26 @@ BufMgr::~BufMgr(){
 	// delete the mem space 
 	// delete [] bufDescr;
 	delete [] bufPool;
+
+	ReplaceList *rWalker;
+	
+	rWalker = LRU;	
+	while(rWalker != NULL){
+		ReplaceList *del = rWalker;
+		rWalker = rWalker->next;
+		free(del);	
+	}
+
+	rWalker = MRU;	
+	while(rWalker != NULL){
+		ReplaceList *del = rWalker;
+		rWalker = rWalker->next;
+		free(del);	
+	}
+
 	LRU = NULL;
 	MRU = NULL;
+	rWalker = NULL;
 	
 	int i;
 	for(i = 0; i < HTSIZE; i++){
@@ -320,7 +338,7 @@ Status BufMgr::freePage(PageId globalPageId){
 		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
 	
 	// if the page is still pinned, return error.
-	if(bufDescr[bufId].pinCount > 1)
+	if(bufDescr[bufId].pinCount  > 0)
 		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
 
 	// set the bufDescr as free
