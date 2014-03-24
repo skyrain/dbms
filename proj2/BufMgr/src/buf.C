@@ -251,6 +251,7 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
 	node = (ReplaceList*)malloc(sizeof(ReplaceList));
 	node->frameId = bufId;
 	node->hate = hate;
+	node->next = NULL;
 	// add this node to the replace list.
 	status = addReplaceList(node);
 	if(status != OK)
@@ -504,6 +505,7 @@ Status BufMgr::hashRemove(PageId pageId)
 				free(bWalkerFree);
 				return OK;
 			}
+			bWalker = bWalker->next;
 		}
 	}
 	//--- if not found ----
