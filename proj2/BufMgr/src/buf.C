@@ -57,6 +57,7 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
 	
 	LRU = NULL;
 	MRU = NULL;
+	
 }
 
 //*************************************************************
