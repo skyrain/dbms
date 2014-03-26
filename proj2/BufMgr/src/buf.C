@@ -291,7 +291,7 @@ Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany) {
 	// call DB to allocate a run of new pages
 	status_1 = MINIBASE_DB->allocate_page(firstPageId, howmany);
 	if(status_1 != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status_1);
+		return MINIBASE_FIRST_ERROR(BUFMGR, status_1);
 	// pin this empty page, set the empty flag as true;
 	status_1 = pinPage(firstPageId, firstpage, TRUE);
 	
@@ -327,6 +327,7 @@ Status BufMgr::freePage(PageId globalPageId){
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BUFMGR,status);
 			minibase_errors.clear_errors();
+			return OK;
 		}
 		else
 			return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
@@ -340,9 +341,13 @@ Status BufMgr::freePage(PageId globalPageId){
 	// if the page is still pinned, return error.
 	if(bufDescr[bufId].pinCount  > 0)
 		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
+	// delete from the hash table
+	status = hashRemove(bufDescr[bufId].pageId);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 	// set the bufDescr as free
-	bufDescr[bufId].pinCount --; 
+	bufDescr[bufId].pinCount = 0; 
 	bufDescr[bufId].pageId = INVALID_PAGE;
 	bufDescr[bufId].dirtyBit = false;
 	
@@ -360,6 +365,7 @@ Status BufMgr::freePage(PageId globalPageId){
 // Should call the write_page method of the DB class
 //************************************************************
 Status BufMgr::flushPage(PageId pageid) {
+
 	// put your code here
 	PageId bufId = -1;
 	Status status;
@@ -380,21 +386,26 @@ Status BufMgr::flushPage(PageId pageid) {
                 return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
 	
 	// page is pinned, then return error	
-	if(bufDescr[bufId].pinCount != 0)
-		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
+	// if(bufDescr[bufId].pinCount != 0)
+	// 	return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
 	
-	// flush the page into disk, and update the hash table and bufDescr
+	/*************
+	// flush the page into disk, do not need to update the hash table and bufDescr, only the dirty bit
+	// will change
+	**************/
+	
 	status = MINIBASE_DB->write_page(bufDescr[bufId].pageId, &bufPool[bufId]);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+	         
+	//	status = hashRemove(pageid);
+	//	if(status != OK)
+	//		return MINIBASE_FIRST_ERROR(BUFMGR, status);
 
-	status = hashRemove(pageid);
-	if(status != OK)
-		return MINIBASE_FIRST_ERROR(BUFMGR, status);
-
-	// update the bufDescr
-	bufDescr[bufId].pageId = INVALID_PAGE;
+		// update the bufDescr
+	//	bufDescr[bufId].pageId = INVALID_PAGE;
 	bufDescr[bufId].dirtyBit = false;
+	
 	
 	return OK;
 }
@@ -425,19 +436,20 @@ Status BufMgr::flushAllPages(){
 		status = MINIBASE_DB->write_page(bufDescr[i].pageId, &bufPool[i]);
 		if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		status = hashRemove(bufDescr[i].pageId);
-		if(status != OK)
-			return MINIBASE_FIRST_ERROR(BUFMGR, status);
+	
+		// ??? do not need to update hash table
+		// status = hashRemove(bufDescr[i].pageId);
+		// if(status != OK)
+		//	return MINIBASE_FIRST_ERROR(BUFMGR, status);
 
 		// update the bufDescr
-		bufDescr[i].pageId = INVALID_PAGE;
+		// bufDescr[i].pageId = INVALID_PAGE;
 		bufDescr[i].dirtyBit = false;
 	}
 
 	// some of the unpinned page has been flushed to the disk
-	if(pinned != 0)
-		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
+	//if(pinned != 0)
+	//	return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
 	
 	return OK;
 }
