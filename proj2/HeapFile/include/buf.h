@@ -1,171 +1,160 @@
+///////////////////////////////////////////////////////////////////////////////
+/////////////  The Header File for the Buffer Manager /////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _BUF_H
-#define _BUF_H
+
+#ifndef BUF_H
+#define BUF_H
 
 #include "db.h"
 #include "page.h"
+#include "new_error.h"
 
-#define NUMBUF 50   // Default number of frames, small number for debugging.
+#define NUMBUF 20   
+// Default number of frames, artifically small number for ease of debugging.
 
-// **************** ALL BELOW are purely local to buffer Manager ********
-// class for maintaining information about buffer pool frame
-class   BufMgr;
+#define HTSIZE 7
+// Hash Table size
 
-#define REPLACER Clock  // This is the default replacement policy.  You
-                        // may specify a different policy when you create
-                        // the buffer manager.
+#define HTA 1
+#define HTB 1
 
-// *****************************************************
+//---- Buffer descriptor ---
+typedef struct BufDescr
+{
+	PageId pageId;
+	int pinCount;
+	bool dirtyBit;
+}BufDescr;
 
-// Create enums for internal errors.
-enum bufErrCodes  {
-    HASH_TBL_ERROR,
-    HASH_NOT_FOUND,
-    BUFFER_EXCEEDED,
-    PAGE_NOT_PINNED,
-    BAD_BUFFER,
-    PAGE_PINNED,
-    REPLACER_ERROR,
-    BAD_BUF_FRAMENO,
-    PAGE_NOT_FOUND,
-    FRAME_EMPTY,
-};
+//--- hashtable bucket ----
+typedef struct Bucket
+{
+	PageId pageId;
+	int frameId;
+	struct Bucket* next;
+}Bucket;
 
+//--- hash table ----------
+typedef struct HashTable
+{
+	Bucket* directory[HTSIZE];	
+}HashTable;
 
-// *****************************************************
-class FrameDesc {
+//--- replacement policy ---
+typedef struct ReplaceList
+{
+	int frameId;
+	bool hate;
+	struct ReplaceList* next;
+}ReplaceList;
 
-  friend class BufMgr;
+/*******************ALL BELOW are purely local to buffer Manager********/
 
-  private:
-    int    pageNo;     // the page within file, or INVALID_PAGE if
-                       // the frame is empty.
+// You could add more enums for internal errors in the buffer manager.
+enum bufErrCodes  {HASHMEMORY, HASHDUPLICATEINSERT, HASHREMOVEERROR, HASHNOTFOUND, QMEMORYERROR, QEMPTY, INTERNALERROR, 
+	BUFFERFULL, BUFMGRMEMORYERROR, BUFFERPAGENOTFOUND, BUFFERPAGENOTPINNED, BUFFERPAGEPINNED};
 
-    unsigned int pin_cnt;  // The pin count for the page in this frame
+class Replacer; // may not be necessary as described below in the constructor
 
-
-
-    FrameDesc() {
-        pageNo  = INVALID_PAGE;
-        pin_cnt = 0;
-    }
-
-   ~FrameDesc() {}
-
-  public:
-    int pin_count() { return(pin_cnt); }
-    int pin() { return(++pin_cnt); }
-    int unpin() {
-        pin_cnt = (pin_cnt <= 0) ? 0 : pin_cnt - 1;
-        return(pin_cnt);
-    }
-};
-
-// *****************************************************
-class Replacer {
-
-  public:
-    virtual int pin( int frameNo );
-    virtual int unpin( int frameNo );
-    virtual int free( int frameNo );
-    virtual int pick_victim() = 0;     // Must pin the returned frame.
-    virtual const char *name() = 0;
-    virtual void info();
-
-    unsigned getNumUnpinnedBuffers();
-
-  protected:
-    Replacer();
-    virtual ~Replacer();
-
-    enum STATE {Available, Referenced, Pinned};
-
-    BufMgr *mgr;
-    friend class BufMgr;
-    virtual void setBufferManager( BufMgr *mgr );
-
-    // These variables are required for the clock algorithm.
-
-    int         head;           // Clock hand.
-    STATE      *state_bit;      // [numBuffers]
-};
-
-// *****************************************************
-class Clock : public Replacer {
-
-  public:
-
-    Clock();
-   ~Clock();
-
-    int   pick_victim();
-    const char *name() { return "Clock"; }
-    void  info();
-};
-
-// *****************************************************
 class BufMgr {
-  friend class HPTester;
 
-  private:
-    unsigned int    numBuffers;
-    Page           *bufPool;    // [numBuffers]; physical buffer pool
+	private: 
+		unsigned int    numBuffers;
+		BufDescr bufDescr[NUMBUF];	
+		HashTable *hashTable;
+		ReplaceList* LRU;
+		ReplaceList* MRU;
+		
+		//--- hash calculation ----------------
+		//--- calculate the bucket should be --
+		//--- according to pageId -------------
+		int hash(PageId pageId);
 
-                                // An array of Descriptors one per frame.
-    FrameDesc      *frmeTable;  // [numBuffers]
+		//--- delete hash bucket ---------------
+		Status hashRemove(PageId pageId);
 
-    Replacer       *replacer;
+		//--- insert hash bucket ---------------
+		Status hashPut(PageId pageId, int frameId);
 
-    // Factor out the common code for the two versions of Flush
-    Status privFlushPages(int pageid, int all_pages=0);
-
-  public:
-
-                // If you provide a replacer, the BufMgr will free it.
-    BufMgr( int bufsize, Replacer *replacer=0 );
-
-                // flushs all valid dirty pages to disk.
-   ~BufMgr();      
-
-        // Check if this page is in buffer pool, otherwise
-        // find a frame for this page, read in and pin it.
-        // Also write out the old page if it's dirty before reading
-        // if emptyPage==TRUE, then actually no read is done to bring
-        // the page in.
-    Status pinPage(int PageId_in_a_DB, Page*& page,
-                   int emptyPage=0, const char *filename=NULL);
-
-        // if pincount > 0, decrement it and if it becomes zero,
-        // put it in a group of replacement candidates.
-        // if pincount=0 before this call, return error.
-    Status unpinPage(int globalPageId_in_a_DB,
-                     int dirty=FALSE, const char *filename=NULL);
-
-        // Call DB object to allocate a run of new pages and 
-        // find a frame in the buffer pool for the first page
-        // and pin it. If buffer is full, ask DB to deallocate 
-        // all these pages and return error
-    Status newPage(int& firstPageId, Page*& firstpage,int howmany=1); 
-
-        // User should call this method if she needs to delete a page
-        // this routine will call DB to deallocate the page .
-    Status freePage(int globalPageId); 
+		//--- get frame id ----------------------
+		//--- input: pageId, frameId(arbitary value,---
+		//--- changed to valid value after execution)--
+		Status hashGetFrameId(PageId pageId, int& frameId);
+	public:
+		Page* bufPool; // The actual buffer pool
+		
+		//--- initialize: 1. bufDescr[]; 2.hashtable; ---
+		BufMgr (int numbuf, Replacer *replacer = 0); 
+		// Initializes a buffer manager managing "numbuf" buffers.
+		// Disregard the "replacer" parameter for now. In the full 
+		// implementation of minibase, it is a pointer to an object
+		// representing one of several buffer pool replacement schemes.
 
 
-        // Added to flush a particular page of the buffer pool to disk
-    Status flushPage(int pageid);
+		~BufMgr();           // Flush all valid dirty pages to disk
 
-        // Flushes all pages of the buffer pool to disk
-    Status flushAllPages();
+		Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage);
+		// Check if this page is in buffer pool, otherwise
+		// find a frame for this page, read in and pin it.
+		// also write out the old page if it's dirty before reading
+		// if emptyPage==TRUE, then actually no read is done to bring
+		// the page
 
+		Status unpinPage(PageId globalPageId_in_a_DB, int dirty, int hate);
+		// hate should be TRUE if the page is hated and FALSE otherwise
+		// if pincount>0, decrement it and if it becomes zero,
+		// put it in a group of replacement candidates.
+		// if pincount=0 before this call, return error.
 
-    unsigned int getNumBuffers() const { return numBuffers; }
-    unsigned int getNumUnpinnedBuffers();
+		Status newPage(PageId& firstPageId, Page*& firstpage, int howmany=1); 
+		// call DB object to allocate a run of new pages and 
+		// find a frame in the buffer pool for the first page
+		// and pin it. If buffer is full, ask DB to deallocate 
+		// all these pages and return error
 
-      // A few routines currently need direct access to the FrameTable.
-    FrameDesc *frameTable() { return frmeTable; }
+		Status freePage(PageId globalPageId); 
+		// User should call this method if it needs to delete a page
+		// this routine will call DB to deallocate the page 
+
+		Status flushPage(PageId pageid);
+		// Used to flush a particular page of the buffer pool to disk
+		// Should call the write_page method of the DB class
+
+		Status flushAllPages();
+		// Flush all pages of the buffer pool to disk, as per flushPage.
+
+		/*** Methods for compatibility with project 1 ***/
+		Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage=0, const char *filename=NULL);
+		// Should be equivalent to the above pinPage()
+		// Necessary for backward compatibility with project 1
+
+		Status unpinPage(PageId globalPageId_in_a_DB, int dirty=FALSE, const char *filename=NULL);
+		// Should be equivalent to the above unpinPage()
+		// Necessary for backward compatibility with project 1
+
+		unsigned int getNumBuffers() const { return numBuffers; }
+		// Get number of buffers
+
+		unsigned int getNumUnpinnedBuffers();
+		// Get number of unpinned buffers
+
+		//----- replacement policy ---------------------------
+		
+		//--- find the node previous location in MRU or LRU list-
+		//--- if is a new node return NULL ----------------------
+		//--- input node's next should be NULL -------------------
+		ReplaceList* findList(ReplaceList* node);
+		
+		//---- every time unPin, add new node to LRU or MRU list ---
+		//---- or modify the node along with its new access time & -
+		//----- & its love/hate value(love conquers hate)        ---
+		//--- input node's next should be NULL -------------------
+		Status addReplaceList(ReplaceList* node);
+
+		//--- replace ----
+		//--- input: frameId(arbitary value, changed after execution)--
+		Status replace(int& frameId);
 };
 
-// *****************************************************
-
-#endif // _BUF_H
+#endif

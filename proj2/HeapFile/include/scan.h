@@ -45,32 +45,23 @@ class Scan {
     // The heapfile we are using.
     HeapFile  *_hf;
 
-    // PageId of current directory page (which is itself an HFPage)
-    // (the actual PageId of the dir page with current position)
+    // the actual PageId of the dir page with current position
     PageId dirPageId;
-    
-    // the actual PageId of the data page with the current record
-    PageId dataPageId;
 
-    // record ID of the DataPageInfo struct (in the directory page) which
-    // describes the data page where our current record lives.
-    // (the rid of the data page)
-    RID dataPageRid;
+	PageId dataPageId;
 
-    // pointer to in-core data of dirpageId (page is pinned) 
-    HFPage *dirPage;
+	// the rid of the data page
+	RID dataPageRid;
+
+	HFPage *dirPage;
 
     // in-core copy (pinned) of the same
     HFPage *dataPage;
 
     // record ID of the current record (from the current data page)
     RID     userRid;
-
-    // flag for whether to check scan is done (0 or 1)
-    int     scanIsDone; // (may not be used)
-
-    // status value of whether next record exists
-    int     nxtUserStatus;
+	int     scanIsDone;
+	int     nxtUserStatus;
 
     // Do all the constructor work
     Status init(HeapFile *hf);
@@ -78,17 +69,11 @@ class Scan {
     // Reset everything and unpin all pages.
     Status reset();
 
-    // Move over the data pages in the file (firstDataPage(), nextDataPage())
-
-    // Get the first data pages in the file
+    // Move over the data pages in the file.
     Status firstDataPage();
-    // Get next data page
     Status nextDataPage();
+	Status nextDirPage();
 
-    // Get next directory page
-    Status nextDirPage();
-
-    // Look ahead the next record
     Status peekNext(RID& rid) {
         rid = userRid;
         return OK;

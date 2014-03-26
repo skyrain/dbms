@@ -9,28 +9,6 @@
 #include "db.h"
 #include "new_error.h"
 
-//  This heapfile implementation is directory-based. We maintain a
-//  directory of info about the data pages (which are of type HFPage
-//  when loaded into memory).  The directory itself is also composed
-//  of HFPages, with each record being of type DataPageInfo
-//  as defined below.
-//
-//  The first directory page is a header page for the entire database
-//  (it is the one to which our filename is mapped by the DB).
-//  All directory pages are in a doubly-linked list of pages, each
-//  directory entry points to a single data page, which contains
-//  the actual records.
-//
-//  The heapfile data pages are implemented as slotted pages, with
-//  the slots at the front and the records in the back, both growing
-//  into the free space in the middle of the page.
-//  See the file 'hfpage.h' for specifics on the page implementation.
-//
-//  We can store roughly pagesize/sizeof(DataPageInfo) records per
-//  directory page; for any given HeapFile insertion, it is likely
-//  that at least one of those referenced data pages will have
-//  enough free space to satisfy the request.
-
 // Error codes for HEAPFILE.
 enum heapErrCodes {
     BAD_RID,
@@ -47,17 +25,15 @@ enum heapErrCodes {
 // DataPageInfo: the type of records stored on a directory page:
 
 struct DataPageInfo {
-  int    availspace;  // total available space of a page: HFPage returns int for avail space, so we use int here
-  int    recct;       // number of records in the page: for efficient implementation of getRecCnt()
-  PageId pageId;      // page id: id of this particular data page (a HFPage)
+  int    availspace;  // HFPage returns int for avail space, so we use int here
+  int    recct;       // for efficient implementation of getRecCnt()
+  PageId pageId;      // obvious: id of this particular data page (a HFPage)
 };
 
 class HeapFile {
 
   public:
 
-    // Initialize.  A null name produces a temporary heapfile which will be
-    // deleted by the destructor.  
     // If the name already denotes a file, the
     // file is opened; otherwise, a new empty file is created.
     HeapFile( const char *name, Status& returnStatus ); 
@@ -84,29 +60,24 @@ class HeapFile {
     // delete the file from the database
     Status deleteFile();
 
-
   private:
     friend class Scan;
 
-    PageId      firstDirPageId;  // page number of header page
-    int         file_deleted;	 // flag for whether file is deleted (initialized to be false in constructor)
-    char       *fileName;	 // heapfile name
-
-    // get new data pages through buffer manager
-    // (dpinfop stores the information of allocated new data pages)
-    Status newDataPage(DataPageInfo *dpinfop);
+    PageId      firstDirPageId;   // page number of header page
+    int         file_deleted;
+    char       *fileName;
     
-    // return a data page (rpDataPageId, rpdatapage) containing a given record (rid) 
-    // as well as a directory page (rpDirPageId, rpdirpage) containing the data page and RID of the data page (rpDataPageRid)
+    // temp parameter
+    int Cannot_Delete;
+    int test;  
+
+    Status newDataPage(DataPageInfo *dpinfop);
     Status findDataPage(const RID& rid, 
 			PageId &rpDirPageId, HFPage *&rpdirpage, 
-			PageId &rpDataPageId,HFPage *&rpdatapage, 
-			RID &rpDataPageRid);
-
-    // put data page information (dpinfop) into a dir page(s)
-    Status allocateDirSpace(struct DataPageInfo * dpinfop,/* data page information*/
-                            PageId &allocDirPageId,/*Directory page having the first data page record*/
-                            RID &allocDataPageRid /*RID of the first data page record*/);
+			PageId &rpDataPageId,HFPage *&rpdatapage);
+    Status allocateDirSpace(struct DataPageInfo * dpinfop,
+                            PageId &allocDirPageId,
+                            RID &allocDataPageRid);
 };
 
 
