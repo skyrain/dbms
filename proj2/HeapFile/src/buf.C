@@ -290,11 +290,12 @@ Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany) {
 	// put your code here
 	Status status_1, status_2;
 	// call DB to allocate a run of new pages
+	const char* filename = NULL;
 	status_1 = MINIBASE_DB->allocate_page(firstPageId, howmany);
 	if(status_1 != OK)
 		return MINIBASE_FIRST_ERROR(BUFMGR, status_1);
 	// pin this empty page, set the empty flag as true;
-	status_1 = pinPage(firstPageId, firstpage, TRUE);
+	status_1 = pinPage(firstPageId, firstpage, TRUE, filename);
 	
 	// if pin unsuccessful, undo all the operations.
 	if(status_1 != OK)
@@ -461,8 +462,107 @@ Status BufMgr::flushAllPages(){
 //** This is the implementation of pinPage
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename){
-  //put your code here
-  Status status = this->pinPage(PageId_in_a_DB, page, emptyPage);
+	// Try to find the Given ID page in the buf pool.
+ 	PageId bufId = -1;
+	PageId prevPage = INVALID_PAGE;
+	bool needtoWrite = FALSE;
+	Status status;
+	// lookup the hash table for the bufID 
+	status = hashGetFrameId(PageId_in_a_DB, bufId);	
+     	
+	if(status != OK){
+                if(minibase_errors.error_index() == HASHNOTFOUND)
+                {	
+			bufId = -1;
+			minibase_errors.clear_errors();
+		}
+		else
+                        return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
+        }
+	
+	// if not find the page in the buf pool, call the replacer to replace a page.
+	if(bufId == -1){
+		status = replace(bufId);
+		
+		// replacer fail to find a valid page, then return an error.
+		if(status != OK || bufId < 0 || bufId >= (int)numBuffers)
+		{
+			bufId = 0;
+			page = NULL;
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+		}
+		
+		
+		// replacer find a non-empty page, then remember the previous page, else use it directly. 	
+		// also check the Descr uf the replacing page needs to flush to disk.
+		prevPage = bufDescr[bufId].pageId;
+		needtoWrite = bufDescr[bufId].dirtyBit;
+		
+		// delete the old element from the hashtable
+		/* ****************** hashRemove *********************/
+		if(prevPage != INVALID_PAGE){	
+			status = hashRemove(prevPage);
+			if(status != OK)
+				return MINIBASE_FIRST_ERROR(BUFMGR, HASHREMOVEERROR);
+		}
+		// update the buf descriptor for the replacing page
+		bufDescr[bufId].pageId = INVALID_PAGE;
+		// ??? Need not to set the pinCount to 0, becuase the replaced one must have 0 pin.
+		bufDescr[bufId].dirtyBit = false;
+		// hash insert
+		/* ******************hashPut********************/
+		status = hashPut(PageId_in_a_DB, bufId);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);	
+		
+		bufDescr[bufId].pageId = PageId_in_a_DB;
+		bufDescr[bufId].dirtyBit = false;
+		// ??? pin count add one if insertion is successful
+		bufDescr[bufId].pinCount ++;
+		
+		if(prevPage != INVALID_PAGE && needtoWrite)
+		{
+			// check if it needs to unpin and the DB error ???.
+			status = MINIBASE_DB->write_page(prevPage, &bufPool[bufId]);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+		}
+	
+		// check if the page is not empty, if it is, then read the page content into buf.
+		// otherwise, return the empty page directly.
+		if(emptyPage == FALSE)
+		{
+			// check the DB error ??? if return error, return the info to replacer.	
+			// rollback the previous operations. bufDescr and hash
+			status = MINIBASE_DB->read_page(PageId_in_a_DB, &bufPool[bufId]);	
+			if(status != OK)
+			{
+				MINIBASE_CHAIN_ERROR(BUFMGR, status);
+				bufDescr[bufId].pageId = INVALID_PAGE;
+				bufDescr[bufId].dirtyBit = false;
+				if(bufDescr[bufId].pinCount > 0)
+					bufDescr[bufId].pinCount --;
+				else
+					bufDescr[bufId].pinCount = 0;				
+				
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+			}
+		}
+	
+		// finally, return the actual data page.
+		page = &bufPool[bufId];
+		return OK;
+	}
+
+	// if the given page in the buffer pool
+	if(bufId >= 0 && bufId < (int)numBuffers)
+	{
+		page = &bufPool[bufId];
+		bufDescr[bufId].pinCount++;
+	}	
+	
+	return OK;
+
   return status;
 }
 

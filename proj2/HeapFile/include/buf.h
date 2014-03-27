@@ -125,11 +125,11 @@ class BufMgr {
 		// Flush all pages of the buffer pool to disk, as per flushPage.
 
 		/*** Methods for compatibility with project 1 ***/
-		Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename);
+		Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage=0, const char *filename=NULL);
 		// Should be equivalent to the above pinPage()
 		// Necessary for backward compatibility with project 1
 
-		Status unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename);
+		Status unpinPage(PageId globalPageId_in_a_DB, int dirty=FALSE, const char *filename=NULL);
 		// Should be equivalent to the above unpinPage()
 		// Necessary for backward compatibility with project 1
 
