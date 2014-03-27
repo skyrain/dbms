@@ -581,7 +581,7 @@ Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *fil
 //************************************************************
 unsigned int BufMgr::getNumUnpinnedBuffers(){
 	//put your code here
-	unsigned int ans;
+	unsigned int ans = 0;
 	unsigned int i;
 	for(i = 0; i < numBuffers; i++)
 	{
