@@ -417,10 +417,12 @@ Status HeapFile::findDataPage(const RID& rid,
     PageId nextPageId = INVALID_PAGE;
     rpdirpage = NULL;
     int flag = 0;
- 
+
+    // Iterate through all the data pages, if find that page, set flag to 1,
     while((flag != 1) && (rpDataPageId != INVALID_PAGE)){   
         MINIBASE_BM->pinPage(rpDataPageId,(Page*&)rpdatapage);
-        nextPageId = rpdatapage->getNextPage();   
+        // get the next page id
+	nextPageId = rpdatapage->getNextPage();   
         if (rpDataPageId == rid.pageNo){  
 	    flag = 1;
 	    break;
@@ -429,7 +431,9 @@ Status HeapFile::findDataPage(const RID& rid,
 	MINIBASE_BM->unpinPage(rpDataPageId);         
 	rpDataPageId = nextPageId;  
     }			 
-
+ 
+    // If the flag is 0, then return Done, left the rpdirpage to be INVALID_PAGE
+    // and rpdatapage = NULL;
     if(flag == 1)
 	return OK;
     else

@@ -117,6 +117,7 @@ BufMgr::~BufMgr(){
 
 	ReplaceList *rWalker;
 	
+	// free the replace list of LRU
 	rWalker = LRU;	
 	while(rWalker != NULL){
 		ReplaceList *del = rWalker;
@@ -124,6 +125,7 @@ BufMgr::~BufMgr(){
 		free(del);	
 	}
 
+	// free the replace list of MRU
 	rWalker = MRU;	
 	while(rWalker != NULL){
 		ReplaceList *del = rWalker;
@@ -134,7 +136,8 @@ BufMgr::~BufMgr(){
 	LRU = NULL;
 	MRU = NULL;
 	rWalker = NULL;
-	
+
+	// free the hashtable	
 	int i;
 	for(i = 0; i < HTSIZE; i++){
 		if(hashTable->directory[i] != NULL)
@@ -377,6 +380,7 @@ Status BufMgr::freePage(PageId globalPageId){
 	}	
 	
 	//Then the page is in the buffer pool.
+	// it will do following update.
 	// bad hash result
 	if(bufId < 0 || bufId >= (int)numBuffers)
 		return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
