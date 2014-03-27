@@ -132,10 +132,9 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
 	status = hashGetFrameId(PageId_in_a_DB, bufId);	
      	
 	if(status != OK){
-                if(minibase_errors.error_index() == HASHNOTFOUND)
+                if(status == DONE)
                 {	
 			bufId = -1;
-			minibase_errors.clear_errors();
 		}
 		else
                         return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
@@ -243,7 +242,7 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
 	status = hashGetFrameId(page_num, bufId);
 	
 	if(status != OK){
-                if(minibase_errors.error_index() == HASHNOTFOUND)
+                if(status == DONE)
                         return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
                 else
                         return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
@@ -323,12 +322,11 @@ Status BufMgr::freePage(PageId globalPageId){
 	status = hashGetFrameId(globalPageId, bufId);
 	// if the page not in the buffer pool. deallocate it.
 	if(status != OK){
-		if(minibase_errors.error_index() == HASHNOTFOUND)
+		if(status == DONE)
 		{	
 			status = MINIBASE_DB->deallocate_page(globalPageId);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BUFMGR,status);
-			minibase_errors.clear_errors();
 			return OK;
 		}
 		else
@@ -377,7 +375,7 @@ Status BufMgr::flushPage(PageId pageid) {
 	
 	// pageid not found in the buffer pool
 	if(status != OK){
-		if(minibase_errors.error_index() == HASHNOTFOUND)
+		if(status == DONE)
 	        	return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
 		else
 			return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
@@ -471,10 +469,9 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const 
 	status = hashGetFrameId(PageId_in_a_DB, bufId);	
      	
 	if(status != OK){
-                if(minibase_errors.error_index() == HASHNOTFOUND)
+                if(status == DONE)
                 {	
 			bufId = -1;
-			minibase_errors.clear_errors();
 		}
 		else
                         return MINIBASE_FIRST_ERROR(BUFMGR, INTERNALERROR);
@@ -716,7 +713,7 @@ Status BufMgr::hashGetFrameId(PageId pageId, int& frameId)
 		bWalker = bWalker->next;
 	}
 
-	return MINIBASE_FIRST_ERROR(BUFMGR, HASHNOTFOUND);
+	return DONE;
 }
 
 

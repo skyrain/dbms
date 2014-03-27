@@ -1,0 +1,56 @@
+
+Running Buffer Management tests...
+--------------------- Test 6 ----------------------
+after pinPage1
+after flushPage1
+after pinPage2
+after flushPage2
+	Error----Unpin an unpinned page error!
+after pinPage3
+after flushPage3
+	Error----Unpin an unpinned page error!
+after pinPage4
+after flushPage4
+	Error----Unpin an unpinned page error!
+after pinPage5
+after flushPage5
+	Error----Unpin an unpinned page error!
+after pinPage6
+after flushPage6
+	Error----Unpin an unpinned page error!
+after pinPage7
+after flushPage7
+	Error----Unpin an unpinned page error!
+after pinPage8
+after flushPage8
+	Error----Unpin an unpinned page error!
+after pinPage9
+after flushPage9
+	Error----Unpin an unpinned page error!
+after pinPage10
+after flushPage10
+	Error----Unpin an unpinned page error!
+after pinPage11
+after flushPage11
+	Error----Unpin an unpinned page error!
+after pinPage12
+after flushPage12
+	Error----Unpin an unpinned page error!
+
+
+PAGE[1]: This is test 6 for page 12
+PAGE[2]: This is test 6 for page 12
+PAGE[3]: This is test 6 for page 12
+PAGE[4]: This is test 6 for page 12
+PAGE[5]: This is test 6 for page 12
+PAGE[6]: This is test 6 for page 12
+PAGE[7]: This is test 6 for page 12
+PAGE[8]: This is test 6 for page 12
+PAGE[9]: This is test 6 for page 12
+PAGE[10]: This is test 6 for page 12
+PAGE[11]: This is test 6 for page 12
+PAGE[12]: This is test 6 for page 12
+
+...Buffer Management tests failed.
+
+Error encountered during buffer manager tests: 
