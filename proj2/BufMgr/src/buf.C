@@ -563,6 +563,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const 
   return status;
 }
 
+/*** Methods for compatibility with project 1 ***/
 //*************************************************************
 //** This is the implementation of unpinPage
 //************************************************************
