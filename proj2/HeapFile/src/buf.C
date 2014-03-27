@@ -462,15 +462,17 @@ Status BufMgr::flushAllPages(){
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename){
   //put your code here
-  return OK;
+  Status status = this->pinPage(PageId_in_a_DB, page, emptyPage);
+  return status;
 }
 
 //*************************************************************
 //** This is the implementation of unpinPage
 //************************************************************
-Status unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename){
+Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename){
   //put your code here
-  return OK;
+  Status status = this->unpinPage(globalPageId_in_a_DB, dirty, false);
+  return status;
 }
 
 //*************************************************************

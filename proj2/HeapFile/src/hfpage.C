@@ -63,6 +63,7 @@ bool empty(void);
 
 - Anything unusual in your implementation
 In implementation of HFPage, we put the slot directory in the front of data[], and the slot directory grows from start of data[] to the end of data[]. At the same time, we put the record from the end of data[] to the start of data[]. 
+
 - What functionalities not supported well
 All functionalities are fully supported.
 --------------------------------------------------------------
