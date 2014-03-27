@@ -632,8 +632,12 @@ unsigned int BufMgr::getNumUnpinnedBuffers(){
 	//put your code here
 	unsigned int ans = 0;
 	unsigned int i;
+
+	// Iterate through all the bufDescr
 	for(i = 0; i < numBuffers; i++)
 	{
+		// if the pinCount of certain bufDescr, 
+		// number of unpinned page plus 1;
 		if(bufDescr[i].pinCount == 0)
 			ans ++;
 	}
