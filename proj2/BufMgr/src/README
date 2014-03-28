@@ -6,7 +6,7 @@ Partners:
 
 Comments:
 	1.Overall description of your algorithms and data structures
-	We put the corresponding algorithms and data structures in the head of source code: buf.C
+	We put the corresponding algorithms and data structures in buf.h and the head of source code: buf.C
 
 	2.Anything unusual in your implementation
 	No unusual implementation, we follow the instructions.
