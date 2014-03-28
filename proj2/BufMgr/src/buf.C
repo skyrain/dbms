@@ -3,41 +3,79 @@
 /*****************************************************************************/
 
 /*
-buf.C
-Define the buffer manager and all the operations.
+   buf.C
+   Define the buffer manager and all the operations.
 
-- Overall description of your algorithms and data structures
+   - Overall description of your algorithms and data structures
 
-  BufMgr::BufMgr (int numbuf, Replacer *replacer): Constructor of the buffer manager. Initializes a buffer manager managing "numbuf" buffers. The "replacer" parameter will be discard now. It will init the bufDescr for each buffer frame and allocate memory for a hashtable.	
-				
-  BufMgr::~BufMgr(): Deconstructor of the buffer manager, Flush all valid dirty pages to disk, free the hashtable bufPool and replacelist, set all the pointers to null.
+//--- hash functions start ------------------------------------
 
-  Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage): Pin a required page. Check if this page is in buffer pool by hash table, otherwise find a frame for this page by replacer, read in and pin it. also write out the old page if it's dirty before reading if emptyPage==TRUE, then actually no read is done to bring the page.
+//--- hash calculation ----------------
+//--- calculate the bucket should be --
+//--- according to pageId -------------
+int hash(PageId pageId);
 
-  Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE): Unpin a required page, hate should be TRUE if the page is hated and FALSE otherwise if pincount>0, decrement it and if it becomes zero, put it in a group of replacement candidates by calling the addReplaceList function. if pincount=0 before this call, return error.
+//--- delete hash bucket ---------------
+Status hashRemove(PageId pageId);
 
-  Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany): New a page and pin this page, it will call DB object to allocate a run of new pages and find a frame in the buffer pool for the first page and pin it. If buffer is full, ask DB to deallocate all these pages and return error.
+//--- insert hash bucket ---------------
+Status hashPut(PageId pageId, int frameId);
 
-  Status BufMgr::freePage(PageId globalPageId): free a data page.  User should call this method if it needs to delete a page this routine will call DB to deallocate the page.
+//--- get frame id ----------------------
+//--- input: pageId, frameId(arbitary value,---
+//--- changed to valid value after execution)--
+Status hashGetFrameId(PageId pageId, int& frameId);
+//----- hash functions end ------------------------------
 
-  Status BufMgr::flushPage(PageId pageid): Flush a page into the disk immediately. Used to flush a particular page of the buffer pool to disks. Should call the write_page method of the DB class.
+//--- replacement policy functions start ---
 
-  Status BufMgr::flushAllPages(): Flush all pages of the buffer pool to disk, as per flushPage. If the page is not dirty, the page will not be flushed.
+//--- find the node previous location in MRU or LRU list-
+//--- if is a new node return NULL ----------------------
+//--- input node's next should be NULL -------------------
+ReplaceList* findList(ReplaceList* node);
 
-  unsigned int BufMgr::getNumUnpinnedBuffers(): Get number of unpinned buffers in buffer pool by checking the pinCount in bufDesc.
-  
-  Methods for compatibility with project 1:
-  Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename): Only with a null filename.
-  Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename): Only with a null filename and without a hate parameter.
-  
+//---- every time unPin, add new node to LRU or MRU list ---
+//---- or modify the node along with its new access time & -
+//----- & its love/hate value(love conquers hate)        ---
+//--- input node's next should be NULL -------------------
+Status addReplaceList(ReplaceList* node);
+
+//--- replace ----
+//--- input: frameId(arbitary value, changed after execution)--
+Status replace(int& frameId);
+
+//--- replacement policy functions end ---
+
+BufMgr::BufMgr (int numbuf, Replacer *replacer): Constructor of the buffer manager. Initializes a buffer manager managing "numbuf" buffers. The "replacer" parameter will be discard now. It will init the bufDescr for each buffer frame and allocate memory for a hashtable.	
+
+BufMgr::~BufMgr(): Deconstructor of the buffer manager, Flush all valid dirty pages to disk, free the hashtable bufPool and replacelist, set all the pointers to null.
+
+Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage): Pin a required page. Check if this page is in buffer pool by hash table, otherwise find a frame for this page by replacer, read in and pin it. also write out the old page if it's dirty before reading if emptyPage==TRUE, then actually no read is done to bring the page.
+
+Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE): Unpin a required page, hate should be TRUE if the page is hated and FALSE otherwise if pincount>0, decrement it and if it becomes zero, put it in a group of replacement candidates by calling the addReplaceList function. if pincount=0 before this call, return error.
+
+Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany): New a page and pin this page, it will call DB object to allocate a run of new pages and find a frame in the buffer pool for the first page and pin it. If buffer is full, ask DB to deallocate all these pages and return error.
+
+Status BufMgr::freePage(PageId globalPageId): free a data page.  User should call this method if it needs to delete a page this routine will call DB to deallocate the page.
+
+Status BufMgr::flushPage(PageId pageid): Flush a page into the disk immediately. Used to flush a particular page of the buffer pool to disks. Should call the write_page method of the DB class.
+
+Status BufMgr::flushAllPages(): Flush all pages of the buffer pool to disk, as per flushPage. If the page is not dirty, the page will not be flushed.
+
+unsigned int BufMgr::getNumUnpinnedBuffers(): Get number of unpinned buffers in buffer pool by checking the pinCount in bufDesc.
+
+Methods for compatibility with project 1:
+Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage, const char *filename): Only with a null filename.
+Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *filename): Only with a null filename and without a hate parameter.
+
 - Anything unusual in your implementation
-  
-  Design and implementation details are the same as what descriped in the course website.
+
+Design and implementation details are the same as what descriped in the course website.
 
 - What functionalities not supported well
 
-  All functionalities are fully supported.
-  
+All functionalities are fully supported.
+
 */
 
 #include "buf.h"
@@ -1166,6 +1204,6 @@ Status BufMgr::replace(int& frameId)
 		}
 	}
 	
-	return MINIBASE_FIRST_ERROR(BUFMGR, QEMPTY); // ??? the error should be no candidate
+	return MINIBASE_FIRST_ERROR(BUFMGR, QEMPTY); 
 }
 
