@@ -61,7 +61,7 @@ Status BTLeafPage::insertRec(const void *key,
 	Datatype datatype;
 	datatype.rid = dataRid;	
 	// Call Key::make_entry for this data record
-	make_entry(&target, key_type, key, LEAF, datatype, &entryLen);	
+	make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);	
 
 	Status status;
 	// Call SortedPage::insertRecord() to accomplish the insert.
@@ -107,7 +107,7 @@ Status BTLeafPage::get_data_rid(void *key,
 
 			// if find the data, then call get_key_data
 			get_key_data((void *)&ktype, (Datatype *)&dataRid,
-		 	(KeyDataEntry*)(data + tmpSlot->offset), tmpSlot->length, LEAF); 
+		 	(KeyDataEntry*)(data + tmpSlot->offset), tmpSlot->length, (nodetype)type); 
 		
 			// if find the key, return.
 			// if not, check to find which side to go
@@ -159,8 +159,13 @@ Status BTLeafPage::get_first (RID& rid,
 		return MINIBASE_FIRST_ERROR(BTLEAFPAGE, GETRECERROR);
 
 	// get the first data key pair
-	get_key_data(key, (Datatype *)&dataRid, (KeyDataEntry *)rec, recLen, LEAF);
-
+	// pack the dataRid into Datatype
+	Datatype *tmpdt = NULL;
+	tmpdt->rid = dataRid;
+	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
+	// unpack the dataRid
+	dataRid = tmpdt->rid;
+	
 	return OK;
 }
 
@@ -191,9 +196,15 @@ Status BTLeafPage::get_next (RID& rid,
         if(status != OK)
                 return MINIBASE_FIRST_ERROR(BTLEAFPAGE, GETRECERROR);
 	
-	// get the next data key pair.
-	get_key_data(key, (Datatype *)&dataRid, (KeyDataEntry *)rec, recLen, LEAF);
-	
+	// get the first data key pair
+	// pack the dataRid into Datatype
+	Datatype *tmpdt = NULL;
+	tmpdt->rid = dataRid;
+	tmpdt->pageNo = INVALID_PAGE;
+	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
+	// unpack the dataRid
+	dataRid = tmpdt->rid;
+
 	rid = nextRid;
 	return OK;
 }
