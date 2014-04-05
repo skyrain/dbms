@@ -24,8 +24,7 @@
  */
 int keyCompare(const void *key1, const void *key2, AttrType t)
 {
-  // put your code here
-  return 0;
+	
 }
 
 /*

@@ -57,9 +57,10 @@ Status BTLeafPage::insertRec(const void *key,
 {
 	// init the parameter for a data entry
 	KeyDataEntry target;
-	int entryLen;
 	Datatype datatype;
 	datatype.rid = dataRid;	
+	int entryLen;	
+	entryLen = 0;
 	// Call Key::make_entry for this data record
 	make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);	
 
@@ -85,12 +86,12 @@ Status BTLeafPage::get_data_rid(void *key,
 	int low;
 	int med;
 	int high;
-	int Eq = 0;
+	int Eq;
 	
 	// define the low and high
 	low = 0;
 	high = slotCnt - 1;
-	
+	Eq = 0;
 	// binart search routine
 	while(low <= high)
 	{
@@ -98,24 +99,26 @@ Status BTLeafPage::get_data_rid(void *key,
 		// find the result key by calling keyCompare
 		// find the med of key by checking the slot. ??? tianyu
 		void * keyc;
-		slot_t * tmpSlot = (slot_t *)&(data[(med - 1) * sizeof(slot_t)]);
-		keyc = (void *)(data + tmpSlot->offset);
+		//---slot_t * tmpSlot = (slot_t *)&(data[(med - 1) * sizeof(slot_t)]);
+		//---keyc = (void *)(data + tmpSlot->offset);
+		
+		// we could access the number of ith slot by using the slot[i], Cross-boarder access
+		keyc = (void *)(data + slot[med].offset);
 		Eq = keyCompare(key, keyc, key_type);
 		// find if the key is the desired one.
 		if(Eq == 0){
 			Keytype ktype;
-
 			// if find the data, then call get_key_data
 			get_key_data((void *)&ktype, (Datatype *)&dataRid,
-		 	(KeyDataEntry*)(data + tmpSlot->offset), tmpSlot->length, (nodetype)type); 
+		 	(KeyDataEntry*)keyc, slot[med].length, (nodetype)type); 
 		
 			// if find the key, return.
 			// if not, check to find which side to go
 			return OK;
-		}else if(Eq < 0)
-			low = med + 1;
+		}else if(Eq > 0)
+			high = med - 1;
 		else
-			high = med + 1;
+			low = med + 1;
 	}
 
 	return MINIBASE_FIRST_ERROR(BTLEAFPAGE,RECNOFOUND);

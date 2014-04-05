@@ -36,10 +36,12 @@ Status BTIndexPage::insertKey (const void *key,
 	// the same process as in the lead page.
 	// init the parameter for a data entry
 	KeyDataEntry target;
-	int entryLen;
 	Datatype datatype;
         datatype.pageNo = pageNo;
+	
         // Call Key::make_entry for this data record
+	int entryLen;
+	entryLen = 0;
         make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);
 
         Status status;
@@ -55,6 +57,7 @@ Status BTIndexPage::insertKey (const void *key,
 // Delete an index entry with a key ??
 Status BTIndexPage::deleteKey (const void *key, AttrType key_type, RID& curRid)
 {
+	// delete, only marks the corresponding leaf entry as deleted???
 	Status status;
 	status = SortedPage::deleteRecord(curRid);
 	if(status != OK)
@@ -81,16 +84,15 @@ Status BTIndexPage::get_page_no(const void *key,
 
 	// otherwise, compare the key with other index
 	int i;
-	for(i = 0; i < slotCnt - 1; i++){
+	for(i = 0; i <= slotCnt - 1; i++){
 		// compare the key with each record in the hfpage
-		slot_t * tmpSlot = (slot_t *)&(data[i * sizeof(slot_t)]);
-		void * keyc = (void *)(data + tmpSlot->offset);
+		void * keyc = (void *)(data + slot[i].offset);
 		if(keyCompare(key, keyc, key_type) >= 0)
 		{
 			// if the key is larger then, get the key data.
 			Datatype *tmpdt = NULL;
 			tmpdt->pageNo = INVALID_PAGE;
-			get_key_data(NULL, tmpdt, (KeyDataEntry *)(data + tmpSlot->offset), tmpSlot->length, (nodetype)type);
+			get_key_data(NULL, tmpdt, (KeyDataEntry *)keyc, slot[i].length, (nodetype)type);
 			pageNo = tmpdt->pageNo;
 			return OK;		
 		}
