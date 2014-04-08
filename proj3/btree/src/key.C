@@ -24,14 +24,37 @@
  */
 int keyCompare(const void *key1, const void *key2, AttrType t)
 {
-	
+        // when we need to compare two keys, we actually compare.
+        // the integer key number in a keytype.
+
+        // At first, cast the key1 and key2 to keytype.
+        Keytype tmpkey1 = NULL;
+        Keytype tmpkey2 = NULL;
+
+        tmpkey1 = (Keytype *)key1;
+        tmpkey2 = (Keytype *)key2;
+
+	int result;
+	result = 0;
+
+	// different type with different comparing method.
+        if(t == attrInteger){
+		// minus the int key number.
+		result = tmpkey1->intkey - tmpkey2->intkey;
+                return result;
+	}else if(t == attrString){
+		// use string compare method to calculate the result.
+		result = strncmp(tmpkey1->charkey, tmpkey2->charkey, MAX_KEY_SIZE1);
+		return result;
+	}else
+		return result;
 }
 
 /*
  * make_entry: write a <key,data> pair to a blob of memory (*target) big
  * enough to hold it.  Return length of data in the blob via *pentry_len.
  *
- * Ensures that <data> part begins at an offset which is an even 
+ e Ensures that <data> part begins at an offset which is an even 
  * multiple of sizeof(PageNo) for alignment purposes.
  */
 void make_entry(KeyDataEntry *target,
@@ -39,8 +62,7 @@ void make_entry(KeyDataEntry *target,
                 nodetype ndtype, Datatype data,
                 int *pentry_len)
 {
-  // put your code here
-  return;
+
 }
 
 
@@ -61,8 +83,17 @@ void get_key_data(void *targetkey, Datatype *targetdata,
  */
 int get_key_length(const void *key, const AttrType key_type)
 {
- // put your code here
- return 0;
+	int result = 0;
+        // different type with different method.
+        if(key_type == attrInteger){
+                result = sizeof(int);
+                return result;
+        }else if(key_type == attrString){
+		// size of string key need a \0 in the end
+                result = strlen((char *)key) + 1;
+                return result;
+        }else
+                return result;
 }
  
 /*
@@ -71,6 +102,15 @@ int get_key_length(const void *key, const AttrType key_type)
 int get_key_data_length(const void *key, const AttrType key_type, 
                         const nodetype ndtype)
 {
- // put your code here
- return 0;
+	int result = 0;
+        // different type with different method.
+        if(ndtype == LEAF){
+                result = sizeof(RID);
+                return result;
+        }else if(ndtype == INDEX){
+                // size of string key need a \0 in the end
+                result = sizeof(PageId);
+                return result;
+        }else
+                return result;
 }
