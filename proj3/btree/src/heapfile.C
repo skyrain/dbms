@@ -168,8 +168,13 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
     while(currPageId != INVALID_PAGE){   
         MINIBASE_BM->pinPage(currPageId, (Page *&)currPage);   
 	status = currPage->insertRecord(recPtr, recLen, outRid);            
-        nextPageId = currPage->getNextPage();    
-	MINIBASE_BM->unpinPage(currPageId);   
+        nextPageId = currPage->getNextPage();  
+		
+	if(status == OK)
+		MINIBASE_BM->unpinPage(currPageId, true);
+	else
+		MINIBASE_BM->unpinPage(currPageId);
+
 		
 	// if insert success, that means there is enough space in the current page.
 	if(status == OK)   
