@@ -46,13 +46,14 @@ class HFPage {
     slot_t    slot[1];     // first element of slot array.
 
     char      data[MAX_SPACE - DPFIXED]; 
-
   public:
     void init(PageId pageNo);   // initialize a new page
     void dumpPage();            // dump contents of a page
 
     PageId getNextPage();       // returns value of nextPage
     PageId getPrevPage();       // returns value of prevPage
+    
+    short getRecCnt();    
 
     void setNextPage(PageId pageNo);    // sets value of nextPage to pageNo
     void setPrevPage(PageId pageNo);    // sets value of prevPage to pageNo
@@ -79,12 +80,51 @@ class HFPage {
 
       // returns a pointer to the record with RID rid
     Status returnRecord(RID rid, char*& recPtr, int& recLen);
-
+    
+    int returnFreespace(void);
       // returns the amount of available space on the page
     int    available_space(void);
 
-      // Returns true if the HFPage is has no records in it, false otherwise.
-    bool empty(void);
+	// Returns true if the HFPage is has no records in it, false otherwise.
+	bool empty(void);
+
+private:
+	// **********************************************
+	//---- assist methods definitions ---------------
+	
+	//--- judge whehter already exist empty slot for new record ---
+	//--- return: -1 no empty slot, need to allocate new slot 
+	//--- return: non-position value - empty slot no 
+	int getEmptySlotNo();
+	
+	void modifySlot(int slotNo, int recLen);
+	
+	void addData(int slotNo, char* recPtr, int recLen);
+	
+	int getRecordOffset(RID rid);
+	
+	//--- clean slot and return the length of the record ----
+	int cleanSlot(RID rid);
+	
+	//--- shrink slot directory ---
+	void shrinkSlotDir();
+	
+	//--- delete record, relocate records beind the deleted record---
+	//--- update slot dir & update usedPtr, freeSpace ---
+	void deleteRec(int offset, int length);
+	
+	//--- relocate records behind the records ---
+	void relocateRecord(int offset, int length);
+	
+	//-- find the slot coresponding to back record ---
+	//-- input: record offset ---
+	slot_t findBackRec(int offset);
+
+	void updateMovingSlot(slot_t mSlot, int offset);
+	
+	void relocateRec(int offset, int length);
+	// ***********************************************
+
 
 };
 
