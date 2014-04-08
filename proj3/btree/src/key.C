@@ -24,24 +24,24 @@
  */
 int keyCompare(const void *key1, const void *key2, AttrType t)
 {
-        // when we need to compare two keys, we actually compare.
-        // the integer key number in a keytype.
+	// when we need to compare two keys, we actually compare.
+	// the integer key number in a keytype.
 
-        // At first, cast the key1 and key2 to keytype.
-        Keytype tmpkey1 = NULL;
-        Keytype tmpkey2 = NULL;
+	// At first, cast the key1 and key2 to keytype.
+	Keytype tmpkey1 = NULL;
+	Keytype tmpkey2 = NULL;
 
-        tmpkey1 = (Keytype *)key1;
-        tmpkey2 = (Keytype *)key2;
+	tmpkey1 = (Keytype *)key1;
+	tmpkey2 = (Keytype *)key2;
 
 	int result;
 	result = 0;
 
 	// different type with different comparing method.
-        if(t == attrInteger){
+	if(t == attrInteger){
 		// minus the int key number.
 		result = tmpkey1->intkey - tmpkey2->intkey;
-                return result;
+		return result;
 	}else if(t == attrString){
 		// use string compare method to calculate the result.
 		result = strncmp(tmpkey1->charkey, tmpkey2->charkey, MAX_KEY_SIZE1);
