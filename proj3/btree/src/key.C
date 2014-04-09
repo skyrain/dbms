@@ -28,8 +28,8 @@ int keyCompare(const void *key1, const void *key2, AttrType t)
 	// the integer key number in a keytype.
 
 	// At first, cast the key1 and key2 to keytype.
-	Keytype tmpkey1 = NULL;
-	Keytype tmpkey2 = NULL;
+	Keytype *tmpkey1 = NULL;
+	Keytype *tmpkey2 = NULL;
 
 	tmpkey1 = (Keytype *)key1;
 	tmpkey2 = (Keytype *)key2;
@@ -46,8 +46,12 @@ int keyCompare(const void *key1, const void *key2, AttrType t)
 		// use string compare method to calculate the result.
 		result = strncmp(tmpkey1->charkey, tmpkey2->charkey, MAX_KEY_SIZE1);
 		return result;
-	}else
-		return result;
+	}
+	// other type ???
+	
+	// non of this type:
+	cout << "AttrType unknown: " << t << endl;
+	return 0;
 }
 
 /*
@@ -79,7 +83,7 @@ void get_key_data(void *targetkey, Datatype *targetdata,
 	
 	if(targetkey == NULL && targetdata == NULL)
 		return;
-
+	
 	// entry_len =  key_len + data_len;
 	int key_len = 0;
 	int data_len = 0;
@@ -92,17 +96,16 @@ void get_key_data(void *targetkey, Datatype *targetdata,
 		data_len = sizeof(PageId);
 		key_len = entry_len - data_len;
 	}
-	else
-		return;
+	// other type ???
 	
 	// unpack the data into memory chunk.
 	// save the key into targetKey
-	if(targetKey != NULL)
-		memcpy(targetKey, psource, key_len);
+	if(targetkey != NULL)
+		memcpy(targetkey, psource, key_len);
 	
 	// sava the data into targetdata
 	if(targetdata != NULL)
-		memcpy(targetKey, psource + key_len, data_len);
+		memcpy(targetkey, psource + key_len, data_len);
 }
 
 /*
@@ -119,8 +122,9 @@ int get_key_length(const void *key, const AttrType key_type)
 		// size of string key need a \0 in the end
                 key_len = strlen((char *)key) + 1;
                 return key_len;
-        }else
-                assert(!"the key_type is wrong");
+	}
+	// other type ???
+	return key_len;
 }
  
 /*
@@ -136,11 +140,10 @@ int get_key_data_length(const void *key, const AttrType key_type,
         // different type with different method.
         if(ndtype == LEAF)
                 data_len = sizeof(RID);
-        else if(ndtype == INDEX){
+        else if(ndtype == INDEX)
                 data_len = sizeof(PageId);
-        else
-		assert(!"the nodetype is wrong");
-
+	// other type ???
+	
 	// Call get_key_length to get the length of the key.
 	key_len = get_key_length(key, key_type);
 	key_data_len = key_len + data_len;
