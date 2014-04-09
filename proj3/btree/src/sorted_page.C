@@ -10,10 +10,12 @@
 #include "btleaf_page.h"
 
 const char* SortedPage::Errors[SortedPage::NR_ERRORS] = {
-  //OK,
-  //Insert Record Failed (SortedPage::insertRecord),
-  //Delete Record Failed (SortedPage::deleteRecord,
+  "OK",
+  "Insert Record Failed (SortedPage::insertRecord)",
+  "Delete Record Failed (SortedPage::deleteRecord)",
 };
+
+static error_string_table hfTable( SORTEDPAGE, SortedPage::Errors );
 
 
 /*
