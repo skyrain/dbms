@@ -34,7 +34,8 @@ class SortedPage : public HFPage {
     _OK = 0,   /* these are indices */
     INSERT_REC_FAILED,
     DELETE_REC_FAILED,
-    NR_ERRORS              /* and this is the number of them */
+    KEY_TYPE_ERROR,
+	NR_ERRORS              /* and this is the number of them */
   }; 
 
   static const char* Errors[NR_ERRORS];

@@ -10,9 +10,10 @@
 #include "btleaf_page.h"
 
 const char* SortedPage::Errors[SortedPage::NR_ERRORS] = {
-  "OK",
-  "Insert Record Failed (SortedPage::insertRecord)",
-  "Delete Record Failed (SortedPage::deleteRecord)",
+	"OK",
+	"Insert Record Failed (SortedPage::insertRecord)",
+	"Delete Record Failed (SortedPage::deleteRecord)",
+	"NOT attrString or attrInteger",
 };
 
 static error_string_table hfTable( SORTEDPAGE, SortedPage::Errors );
@@ -38,13 +39,50 @@ static error_string_table hfTable( SORTEDPAGE, SortedPage::Errors );
  *    o rid is the record id of the record inserted.
  */
 
+//---- insertRecord method will hide the base method ---
 Status SortedPage::insertRecord (AttrType key_type,
-                                 char * recPtr,
-                                 int recLen,
-                                 RID& rid)
+		char * recPtr,
+		int recLen,
+		RID& rid)
 {
-  // put your code here
-  return OK;
+	// put your code here
+	//--- check key_type ---
+	if(key_type != attrString && key_type != attrInteger)
+		return MINIBASE_FIRST_ERROR(SORTEDPAGE, KEY_TYPE_ERROR);
+
+	//---1. call base insertRecord func to insert record ---
+	Status status = HFPage::insertRecord(recPtr, recLen, rid);
+
+	//--- check whether insert is good ---
+	if(status != OK)
+		return MINIBASE_RESULTING_ERROR(SORTEDPAGE, status, INSERT_REC_FAILED);
+
+	//---2. rearrange the slot dir ---
+
+	//--- 2.1 get the key value ---
+	//--- accoridng to key_type to retrieve key value ---
+	if(key_type == attrInteger)
+	{
+		void* keyMem = calloc(1, sizeof(int));
+		memcpy(keyMem, recPtr, sizeof(int));
+
+		int key = (int)(*keyMem);
+		free(keyMem);
+	}
+	else if(key_type == attrString)
+	{
+		void* keyMemRe = calloc(1, sizeof(MAX_KEY_SIZE1));
+		memcpy(keyMemRe, recPtr, sizeof(MAX_KEY_SIZE1));
+		void* keyMem = calloc(1, strlen((char* )keyMem));
+		memcpy(keyMem, keyMemRe, sizeof(keyMem));
+		free(keyMemRe);
+		char* key = (char* )KeyMem;
+	}
+
+	//--- 2.2 rearrange slot dir including the new slot ---
+	//--- & change rid value ---
+
+	return OK;
 }
 
 
