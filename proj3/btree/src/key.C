@@ -74,8 +74,35 @@ void make_entry(KeyDataEntry *target,
 void get_key_data(void *targetkey, Datatype *targetdata,
                   KeyDataEntry *psource, int entry_len, nodetype ndtype)
 {
-   // put your code here
-   return;
+	// We need to slit the KeyDataEntry, and give the value to targetKey
+	// and targetdata based on the nodetype and the given entry_length.
+	
+	if(targetkey == NULL && targetdata == NULL)
+		return;
+
+	// entry_len =  key_len + data_len;
+	int key_len = 0;
+	int data_len = 0;
+	
+	if(ndtype == LEAF){
+		data_len = sizeof(RID);
+		key_len = entry_len - data_len;
+	}
+	else if(ndtype == INDEX){
+		data_len = sizeof(PageId);
+		key_len = entry_len - data_len;
+	}
+	else
+		return;
+	
+	// unpack the data into memory chunk.
+	// save the key into targetKey
+	if(targetKey != NULL)
+		memcpy(targetKey, psource, key_len);
+	
+	// sava the data into targetdata
+	if(targetdata != NULL)
+		memcpy(targetKey, psource + key_len, data_len);
 }
 
 /*
@@ -83,17 +110,17 @@ void get_key_data(void *targetkey, Datatype *targetdata,
  */
 int get_key_length(const void *key, const AttrType key_type)
 {
-	int result = 0;
+	int key_len = 0;
         // different type with different method.
         if(key_type == attrInteger){
-                result = sizeof(int);
-                return result;
+                key_len = sizeof(int);
+                return key_len;
         }else if(key_type == attrString){
 		// size of string key need a \0 in the end
-                result = strlen((char *)key) + 1;
-                return result;
+                key_len = strlen((char *)key) + 1;
+                return key_len;
         }else
-                return result;
+                assert(!"the key_type is wrong");
 }
  
 /*
@@ -102,15 +129,21 @@ int get_key_length(const void *key, const AttrType key_type)
 int get_key_data_length(const void *key, const AttrType key_type, 
                         const nodetype ndtype)
 {
-	int result = 0;
+	int key_len = 0;
+	int data_len = 0;
+	int key_data_len = 0;
+
         // different type with different method.
-        if(ndtype == LEAF){
-                result = sizeof(RID);
-                return result;
-        }else if(ndtype == INDEX){
-                // size of string key need a \0 in the end
-                result = sizeof(PageId);
-                return result;
-        }else
-                return result;
+        if(ndtype == LEAF)
+                data_len = sizeof(RID);
+        else if(ndtype == INDEX){
+                data_len = sizeof(PageId);
+        else
+		assert(!"the nodetype is wrong");
+
+	// Call get_key_length to get the length of the key.
+	key_len = get_key_length(key, key_type);
+	key_data_len = key_len + data_len;
+	
+	return key_data_len;	
 }
