@@ -66,7 +66,25 @@ void make_entry(KeyDataEntry *target,
                 nodetype ndtype, Datatype data,
                 int *pentry_len)
 {
+	// entry_len =  key_len + data_len;
+	int key_len = 0;
+	int data_len = 0;
+	// Final length of the entry.
+	*pentry_len = get_key_data_length(key, key_type, ndtype);
+	key_len = get_key_length(key, key_type);
+	data_len = *pentry_len - key_len;
 
+	// write a key into memory chunk of target.
+	if(key_type == attrInteger)
+		memcpy(target, key, key_len);
+	else if(key_type == attrString)
+		// memcpy ???
+		strcpy((char *)target, (char *)key);
+	else //other type ???
+		cout << " KeyType unknown: " << key_type << endl;
+
+	// write data into memory chunk of targe
+	memcpy(target + key_len, &data, data_len);
 }
 
 
