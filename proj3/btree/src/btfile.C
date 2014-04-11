@@ -16,13 +16,13 @@
 const char* BtreeErrorMsgs[] = {
   // Possible error messages
   // _OK
-  // CANT_FIND_HEADER
-  // CANT_PIN_HEADER,
-  // CANT_ALLOC_HEADER
-  // CANT_ADD_FILE_ENTRY
-  // CANT_UNPIN_HEADER
-  // CANT_PIN_PAGE
-  // CANT_UNPIN_PAGE
+  "Can't find header"// CANT_FIND_HEADER
+  "Can't pin header"// CANT_PIN_HEADER,
+  "Can't alloc header"// CANT_ALLOC_HEADER
+  "Can't add file entry"// CANT_ADD_FILE_ENTRY
+  "Can't unpin header"// CANT_UNPIN_HEADER
+  "Can't pin page"// CANT_PIN_PAGE
+  "Can't unpin page"// CANT_UNPIN_PAGE
   // INVALID_SCAN
   // SORTED_PAGE_DELETE_CURRENT_FAILED
   // CANT_DELETE_FILE_ENTRY
@@ -41,9 +41,33 @@ const char* BtreeErrorMsgs[] = {
 
 static error_string_table btree_table( BTREE, BtreeErrorMsgs);
 
+// BTreeFile constructor, if B+ tree with given filename exist already, open it.
 BTreeFile::BTreeFile (Status& returnStatus, const char *filename)
 {
-  // put your code here
+	Status status;
+	PageId headId = INVALID_PAGE;
+	// Call DB function to open the btree file.
+	status = MINIBASE_DB->get_file_entry(filename, headId);
+	if(status != OK)
+	{
+		returnStatus = MINIBASE_FIRST_ERROR(BTREE, NO_HEADER);
+		return;
+	}
+		
+	Page *headPage;
+	status = MINIBASE_BM->pinPage(headerPageId, (Page *&)headPage);
+	if(status != OK)
+	{
+		returnStatus = MINIBASE_FIRST_ERROR(BTREE, HEADER_PIN_ERROR);
+		return;
+	}
+	// give the page address to headerPage;
+	this->headerPage = headPage;
+	// give the value to headerPageId.
+	this->headerPageId = headId;
+	// give the value to filename;
+	this->filename = new char[strlen(filename) + 1];
+	strcpy(this->filename, filename);
 }
 
 BTreeFile::BTreeFile (Status& returnStatus, const char *filename, 
