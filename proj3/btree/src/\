@@ -25,8 +25,8 @@ const char* BtreeErrorMsgs[] = {
   "Can't unpin page"// CANT_UNPIN_PAGE
   // INVALID_SCAN
   // SORTED_PAGE_DELETE_CURRENT_FAILED
-  "Can't delete file entry"// CANT_DELETE_FILE_ENTRY
-  "Can't free a page"// CANT_FREE_PAGE,
+  // CANT_DELETE_FILE_ENTRY
+  // CANT_FREE_PAGE,
   // CANT_DELETE_SUBTREE,
   // KEY_TOO_LONG
   // INSERT_FAILED
@@ -111,7 +111,7 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 		((BTLeafPage *))rootPage->inir(rootPageId);
 
 		// then unpin the root page
-		status = MINIBASE_BM->unpinPage(rootPageId, true);
+		status = MINIBASE_BM->unpinPage(rootPageId, 1);
 		if(status != OK)
 		{
 			returnStatus = MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
@@ -153,45 +153,15 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 	}
 }
 
-// Decontructor of Btree file, unpin the header page delete the filename;	
 BTreeFile::~BTreeFile ()
 {
-	// delete the memory space of name space
-	delete [] filename;
 	
-	Status status;
-	// unpin the header page, set it dirty
-	status = MINIBASE_BM->unpinPage(headerId, true);
-	if(status != OK)
-		MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-		
 }
 
-// Delete the whole btree file from the database, unpin each page from the index recursively, by calling get_first and get_next. Delete the file at last.
 Status BTreeFile::destroyFile ()
 {
-	// start from the root, recursively free each leaf page under index page
-	/*
-	 *
-	 */
-
-		
-
-	// unpin and free the header page.
-	status = MINIBASE_BM->unpinPage(headerPageId);
-	if(status != OK)
-		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-	
-	status = MINIBASE_BM->freePage(headerPageId);
-	if(status != OK)
-		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-	
-	// delete from db 
-	status = MINIBASE_DB->delete_file_entry(filename);
-	if(status != OK)
-		return MINIBASE_FIRST_ERROR(BTREE, DELETE_FILE_ENTRY_ERROR);
-	
-	return OK;
+  // put your code here
+  return OK;
 }
 
 Status BTreeFile::insert(const void *key, const RID rid) {

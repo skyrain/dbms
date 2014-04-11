@@ -14,6 +14,12 @@
 #include "btreefilescan.h"
 #include "bt.h"
 
+// Define the headerPage to hold the information about the tree as a whole
+struct HeaderPage{
+	PageId rootPageId;
+	AttrType keyType;
+	int keysize;	
+};
 
 // Define your error code for B+ tree here
 enum btErrCodesa{
@@ -24,6 +30,9 @@ enum btErrCodesa{
 	UNPIN_HEADER_ERROR,
 	CANT_PIN_PAGE,
 	CANT_UNPIN_PAGE,
+	DELETE_FILE_ENTRY_ERROR,
+	FREE_PAGE_ERROR,
+	ROOT_ALLOC_ERROR,
 };
 
 class BTreeFile: public IndexFile
@@ -67,12 +76,13 @@ class BTreeFile: public IndexFile
     int keysize();
     
   private:
-	// header page Id;
-	PageId headerPageId;
 	// file name of the btreefile
 	char * filename;
+	// header page Id;
+	PageId headerPageId;
 	// header page
-	Page * headerPage;
+	HeaderPage * headerPage;
+	
 };
 
 #endif
