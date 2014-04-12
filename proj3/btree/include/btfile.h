@@ -32,6 +32,7 @@ enum btErrCodesa{
 	CANT_UNPIN_PAGE,
 	DELETE_FILE_ENTRY_ERROR,
 	FREE_PAGE_ERROR,
+	DELETE_TREE_ERROR,
 	ROOT_ALLOC_ERROR,
 };
 
@@ -50,7 +51,7 @@ class BTreeFile: public IndexFile
     
     Status destroyFile();
     // destroy entire index file, including the header page and the file entry
-    
+   
     Status insert(const void *key, const RID rid);
     // insert <key,rid> into appropriate leaf page
     
@@ -74,7 +75,10 @@ class BTreeFile: public IndexFile
     //              range scan from lo_key to hi_key
 
     int keysize();
-    
+  
+    Status deleteSubTree(PageId pageId);  
+    // Supporting function for destroyFile(), recursively delete the subtree of input node
+	
   private:
 	// file name of the btreefile
 	char * filename;

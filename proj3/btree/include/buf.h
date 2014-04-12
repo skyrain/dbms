@@ -10,7 +10,7 @@
 #include "page.h"
 #include "new_error.h"
 
-#define NUMBUF 100 
+#define NUMBUF 1000
 // Default number of frames, artifically small number for ease of debugging.
 
 #define HTSIZE 7

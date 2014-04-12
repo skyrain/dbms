@@ -27,7 +27,7 @@ const char* BtreeErrorMsgs[] = {
   // SORTED_PAGE_DELETE_CURRENT_FAILED
   "Can't delete file entry"// CANT_DELETE_FILE_ENTRY
   "Can't free a page"// CANT_FREE_PAGE,
-  // CANT_DELETE_SUBTREE,
+  "Can't delete subtree"// CANT_DELETE_SUBTREE,
   // KEY_TOO_LONG
   // INSERT_FAILED
   "Can't create root"// COULD_NOT_CREATE_ROOT
@@ -54,15 +54,12 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename)
 		return;
 	}
 		
-	Page *headPage;
-	status = MINIBASE_BM->pinPage(headerPageId, (Page *&)headPage);
+	status = MINIBASE_BM->pinPage(headerPageId, (Page *&)(this->headerPage));
 	if(status != OK)
 	{
 		returnStatus = MINIBASE_FIRST_ERROR(BTREE, HEADER_PIN_ERROR);
 		return;
 	}
-	// give the page address to headerPage;
-	this->headerPage = (HeaderPage *)headPage;
 	// give the value to headerPageId.
 	this->headerPageId = headId;
 	// give the value to filename;
@@ -84,9 +81,8 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
         if(status != OK)
         {	
 		PageId headId = INVALID_PAGE;
-		Page * headPage;
 		// allocate a header page by calling newPage.
-		status = MINIBASE_BM->newPage(headId, (Page *&)headPage);
+		status = MINIBASE_BM->newPage(headId, (Page *&)(this->headerPage));
 		if(status != OK)
 		{
 			returnStatus = MINIBASE_FIRST_ERROR(BTREE, HEADER_ALLOC_ERROR);
@@ -94,8 +90,8 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 		}	
 
 		// allocate a root page to the header page.
-		PageId rootPageId = INVALIND_PAGE;
-		page * rootPage;
+		PageId rootPageId = INVALID_PAGE;
+		Page * rootPage;
 		// allocate a root page by calling newPage.
 		status = MINIBASE_BM->newPage(rootPageId, (Page *&)rootPage);
 		if(status != OK){
@@ -104,11 +100,10 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 		}
 
 		// Store the meta info into the header page.
-		this->headerPage = (HeaderPage *)headPage;
 		headerPage->rootPageId = rootPageId;
 		headerPage->keyType = keytype;
 		headerPage->keysize = keysize;
-		((BTLeafPage *))rootPage->inir(rootPageId);
+		((BTLeafPage *)rootPage)->init(rootPageId);
 
 		// then unpin the root page
 		status = MINIBASE_BM->unpinPage(rootPageId, true);
@@ -135,15 +130,12 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 
         }else{
 		// else we pin and open the existing btree directly
- 		Page *headPage;
-        	status = MINIBASE_BM->pinPage(headerPageId, (Page *&)headPage);
+        	status = MINIBASE_BM->pinPage(headerPageId, (Page *&)(this->headerPage));
 	        if(status != OK)
        	 	{
                 	returnStatus = MINIBASE_FIRST_ERROR(BTREE, HEADER_PIN_ERROR);
                	 	return;
         	}
-		// give the page address to headerPage;
-		this->headerPage = (HeadPage *)headPage;
 	        // give the value to headerPageId.
         	this->headerPageId = headId;
 	        // give the value to filename;
@@ -161,28 +153,35 @@ BTreeFile::~BTreeFile ()
 	
 	Status status;
 	// unpin the header page, set it dirty
-	status = MINIBASE_BM->unpinPage(headerId, true);
+	status = MINIBASE_BM->unpinPage(headerPageId, true);
 	if(status != OK)
 		MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-		
 }
 
 // Delete the whole btree file from the database, unpin each page from the index recursively, by calling get_first and get_next. Delete the file at last.
 Status BTreeFile::destroyFile ()
 {
 	// start from the root, recursively free each leaf page under index page
-	/*
-	 *
-	 */
-
-		
-
+	Status status;
+	PageId root = INVALID_PAGE;
+	root = headerPage->rootPageId;
+	
+	// if the root is not null, recursively delete the child of the node
+	if(root != INVALID_PAGE)
+	{	
+		status = deleteSubTree(root);
+		if(status != OK)
+			return MINIBASE_FIRST_ERROR(BTREE, CANT_PIN_PAGE);
+	}
+	
+	PageId headId = INVALID_PAGE;
+	headId = this->headerPageId;
 	// unpin and free the header page.
-	status = MINIBASE_BM->unpinPage(headerPageId);
+	status = MINIBASE_BM->unpinPage(headId);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	
-	status = MINIBASE_BM->freePage(headerPageId);
+	status = MINIBASE_BM->freePage(headId);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	
@@ -190,6 +189,46 @@ Status BTreeFile::destroyFile ()
 	status = MINIBASE_DB->delete_file_entry(filename);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, DELETE_FILE_ENTRY_ERROR);
+	
+	return OK;
+}
+
+// Supporting function for destroyFile(), recursively delete the subtree of input node
+Status BTreeFile::deleteSubTree(PageId pageId){
+	Status status;
+	SortedPage * curPage;
+	
+	status = MINIBASE_BM->pinPage(pageId, (Page *&)curPage);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTREE, CANT_PIN_PAGE);
+	
+	// if the current page is a index page then, find it's child node.
+	if(curPage->get_type() == INDEX)
+	{
+		BTIndexPage *tmpPage;
+		tmpPage = (BTIndexPage *)curPage;
+		RID tmpRid;
+		PageId nextId;
+		void *tmpKey = NULL;	
+	
+		// Recursively delete the child node of certain index node.
+		status = tmpPage->get_first(tmpRid, tmpKey, nextId);
+		while(status != NOMORERECS){
+			status = deleteSubTree(nextId);
+			if(status != OK)
+				return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+			status = tmpPage->get_next(tmpRid, tmpKey, nextId);
+		}
+	}
+
+	// unpin and free the page at last.
+	status = MINIBASE_BM->unpinPage(pageId);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+	
+	status = MINIBASE_BM->freePage(pageId);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTREE, FREE_PAGE_ERROR);
 	
 	return OK;
 }
