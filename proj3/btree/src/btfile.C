@@ -29,7 +29,7 @@ const char* BtreeErrorMsgs[] = {
   "Can't free a page"// CANT_FREE_PAGE,
   "Can't delete subtree"// CANT_DELETE_SUBTREE,
   // KEY_TOO_LONG
-  // INSERT_FAILED
+  "INSERT_FAILED"
   "Can't create root"// COULD_NOT_CREATE_ROOT
   // DELETE_DATAENTRY_FAILED
   // DATA_ENTRY_NOT_FOUND
@@ -233,13 +233,48 @@ Status BTreeFile::deleteSubTree(PageId pageId){
 	return OK;
 }
 
+//--- key: index entry value to be inserted to upper layer ---
+//--- split: flag whether insert new index entry to upper layer ---
+//--- if split == false, key could be just initialize(not used by upper layer) ---
+Status BTreeFile::insertHelper(const void* key, const RID rid, 
+		PageId pageNo, Keytype key, bool& split)
+{
+	Status status;
+	//--- retrieve pageNo page ---
+	HFPage* currPage;
+	status = MINIBASE_BM->pinPage(pageNo, (Page *&)currPage);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+	
+	if(currPage->type == INDEX)
+	{
+		//--- retrieve next level page ---
+		PageId nextPage = 0;
+		status = get_page_no(key, headerPage->keyType, nextPage);
+		if(status != OK)
+			return MINBASE_FIRST_ERROR(BTREE, INSERT_FAILED); 
+
+	}
+	else
+	{
+	}
+}
+
 Status BTreeFile::insert(const void *key, const RID rid) {
-  // put your code here
+	// put your code here
+	//--- retrieve root page ---
+
+	//-- call insertHelper ---
+
+
+
+
   return OK;
 }
 
 Status BTreeFile::Delete(const void *key, const RID rid) {
   // put your code here
+
   return OK;
 }
     

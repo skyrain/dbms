@@ -33,6 +33,7 @@ enum btErrCodesa{
 	DELETE_FILE_ENTRY_ERROR,
 	FREE_PAGE_ERROR,
 	DELETE_TREE_ERROR,
+	INSERT_FAILED,
 	ROOT_ALLOC_ERROR,
 };
 
@@ -76,10 +77,7 @@ class BTreeFile: public IndexFile
 
     int keysize();
   
-    Status deleteSubTree(PageId pageId);  
-    // Supporting function for destroyFile(), recursively delete the subtree of input node
-	
-  private:
+     private:
 	// file name of the btreefile
 	char * filename;
 	// header page Id;
@@ -87,6 +85,19 @@ class BTreeFile: public IndexFile
 	// header page
 	HeaderPage * headerPage;
 	
+	//--- assist functions ---
+	
+	Status deleteSubTree(PageId pageId);  
+    // Supporting function for destroyFile(), recursively delete the subtree of input node
+	
+	//--- insert helper ---
+	//--- key: index entry value to be inserted to upper layer ---
+	//--- split: flag whether insert new index entry to upper layer ---
+	//--- if split == false, key could be just initialize(not used by upper laye	r) ---
+	Status insertHelper(const void* key, const RID rid, 
+			PageId pageNo, Keytype key, bool& split);
+
+
 };
 
 #endif
