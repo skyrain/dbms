@@ -254,20 +254,58 @@ Status BTreeFile::insertHelper(const void* key, const RID rid,
 		if(status != OK)
 			return MINBASE_FIRST_ERROR(BTREE, INSERT_FAILED); 
 
+		Keytype lowerKey;
+		bool lowerSplit = false;
+		status = insertHelper(key, rid, nextPage, lowerKey, lowerSplit);
+
+		//--- check whether lower level adds new index entry ---
+		//--- to this level ---
+		if(lowerSplit)
+		{
+			//--- call insertKey() -----
+
+			//--- if insertKey() not OK, try redistribution first ----
+
+			//--- if redistribution returns false, construct key push up ---
+			//--- mark split = true ---
+		}
 	}
 	else
 	{
+		RID keyRid;
+		status = insertRec(key, headerPage->keyType, rid, keyRid);
+		if(status != OK)
+		{
+			//---- try redistribution first  ----
+
+			//--- if redistribution returns false, construct key copy up--
+			//--- mark split = true  ---
+		}
 	}
+
+	//--- unpin pageNo page, and return OK ---
+	status = MINIBASE_BM->unpinPage(pageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return OK;
 }
 
 Status BTreeFile::insert(const void *key, const RID rid) {
 	// put your code here
+	Status status;
 	//--- retrieve root page ---
+	HFPage* rootPage;
+	status = MINIBASE_BM->pinPage(headerPage->rootPageId, (Page*& rootPage));
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 	//-- call insertHelper ---
-
-
-
+	Keytype lowerKey;
+	bool lowerSplit = false;
+	status = insertHelper(key, rid, headerPage->rootPageId, lowerKey, lowerSplit);
+	if(status != OK)
+		return MINIBASE_RESULTING_ERROR(BTREE, status, INSERT_FAILED);
 
   return OK;
 }
