@@ -59,16 +59,42 @@ Status BTIndexPage::insertKey (const void *key,
 }
 
 // ------------------- deletekey ------------------------
-// Delete an index entry with a key ??
+// Delete an index entry with a key, only deal with the push up in index.
 Status BTIndexPage::deleteKey (const void *key, AttrType key_type, RID& curRid)
 {
-	// delete, only marks the corresponding leaf entry as deleted???
-	//Status status;
-	//status = SortedPage::deleteRecord(curRid);
-	//if(status != OK)
-	//	return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXDELFAIL);
+	// In this case, delete an index entry only happen during push up.
+	Status status;
+	PageId tmpId;
+	Keytype tmpkey;
+	int found = 0;
 	
-	//return OK;
+	status = get_first(curRid, (void *)&tmpKey, tmpId);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
+	
+	int res = 0;
+	res = keyCompare(key, (void *)&tmpKey, key_type);
+	
+	// Fint the key that once larger than a certain tmpKey.
+	while(res > 0){
+		status = get_next(curRid, (void *)&tmpKey, tmpId);
+		if(status != OK)
+			break;
+		res = keyCompare(key, (void *(&tmpKey, key_type);
+	}
+	
+	// when break with the while loop, determine whether find the record exactly
+	// otherwise, delete the previous key
+	found = keyCompare(key, (void *)&tmpKey, key_type);
+	if(found != 0)
+		curRid.slotNo --;
+	
+	// Delete the record by calling deketeRecord in sorted page.
+	status = deleteRecord(curRid);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXDELFAIL);
+	
+	return OK;
 }
 
 // ------------------ get_page_no -----------------------
@@ -80,33 +106,86 @@ Status BTIndexPage::get_page_no(const void *key,
                                 AttrType key_type,
                                 PageId & pageNo)
 {
+	RID tmpRid;
+	Keytype curKey;
+	PageId curId;
+	int res;
+
+	res = 0;
+	tmpId = INVALID_PAGE;	
+
 	// if the key is NULL, return current page
 	if(key == NULL)
 	{
 		pageNo = ((HFPage *)this)->page_no();
 		return OK;
 	}
+	
+	status = get_first(tmpRid, &curKey, curId);
+	if(status != OK)
+		return MINIBASE_FRIRT_ERROR(BTINDEXPAGE, GETRECERROR);
 
-	// otherwise, compare the key with other index
-	int i;
-	for(i = 0; i <= slotCnt - 1; i++){
-		// compare the key with each record in the hfpage
-		void * keyc = (void *)(data + slot[i].offset);
-		if(keyCompare(key, keyc, key_type) >= 0)
-		{
-			// if the key is larger then, get the key data.
-			Datatype *tmpdt = NULL;
-			tmpdt->pageNo = INVALID_PAGE;
-			get_key_data(NULL, tmpdt, (KeyDataEntry *)keyc, slot[i].length, (nodetype)type);
-			pageNo = tmpdt->pageNo;
-			return OK;		
-		}
+	// if the key small than the first key, return left link of the index.
+	res = KeyCompare(key, &curKey, curId);
+	if(res < 0)
+	{
+		pageNo = getLeftLink();
+		return OK;
 	}
 	
-	// if not find in the curr page, return the left index page.
-	pageNo = getLeftLink();
-	return OK;
+	// if is not in the left link, find a right index page to go.
+	if(res >= 0)
+	{
+		bool larger_than_prev = false;
+		bool smaller_than_next = false
+		PageId prevId;
+		Kettype prevKey;
+		int prev = 0;
+		int next = 0;
+		int numKeys = ((SortedPage*)this)->numberOfRecords();
+	
+		prevId = curId;
+		prevKey = curKey;
+
+		int i ;
+		for(i = 0; i < numKeys; i++)
+		{
+			// go through all the records to find the page.	
+			status = get_next(tmpRid, &curKey, curId);
+			if(status != OK){	
+				if(status == NOMORERECS)
+					break;
+				else
+					return MINIBASE_FIRST_ERROR(BTINDEXTREE, GETRECERROR);
+			}
+
+			// Compare the key with its previous and next key.
+			prev = KeyCompare(key, &prevKey, key_type);
+			next = KeyCompare(key, &curKey, key_type);
+			if(prev >= 0)
+				larger_than_prev = true;
+			if(next < 0)
+				smaller_than_next = true;
+			
+			// Find the exact pageNo, return OK.
+			if(larger_than_prev && smaller_than_next)
+			{
+				pageNo = prevId;
+				return OK;
+			}else{
+				// If it doesn't find, reset the flag and try again.
+				larger_than_prev = false;
+				smaller_than_next =false;
+				prevId = curId;
+				prevKey = curKey;
+			}
+		}
 		
+		// if didn't find the in the loop, the key must locate at the last index.
+		pageNo = prevId;
+		return OK;
+	}
+	return MINIBASE_FIRST_ERROR(BTINDEXTREE, GETRECERROR);
 }
 
 // calls to HFPage::firstRecord() to get the first key pair    
