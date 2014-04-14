@@ -64,6 +64,19 @@ class BTLeafPage : public SortedPage {
    Status get_first(RID& rid, void *key, RID & dataRid);
    Status get_next (RID& rid, void *key, RID & dataRid);
 
+// ------------------- Iterators ------------------------
+// The two functions get_first and get_next provide an
+// iterator interface to the records on a specific BTLeafPage.
+// get_first returns the first <key, dataRid> pair from the page,
+// while get_next returns the next pair on the page.
+// These functions make calls to HFPage::firstRecord() and
+// HFPage::nextRecord(), and then split the flat record into its
+// two components: namely, the key and dataRid.
+// Should return NOMORERECS when there are no more pairs
+
+   Status get_first_sp(RID& rid, void *key, RID & dataRid, PageId spPageNo);
+   Status get_next_sp (RID& rid, void *key, RID & dataRid, PageId spPageNo);
+
 
 // ------------------ get_data_rid -----------------------
 // This function performs a sequential search (or a

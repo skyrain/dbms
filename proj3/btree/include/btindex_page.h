@@ -60,6 +60,22 @@ class BTIndexPage : public SortedPage {
    Status get_first(RID& rid, void *key, PageId & pageNo);
    Status get_next (RID& rid, void *key, PageId & pageNo);
 
+// ------------------- Iterators ------------------------
+// The two functions get_first and get_next provide an
+// iterator interface to the records on a specific BTIndexPage.
+// get_first returns the first <key, pageNo> pair from the page,
+// while get_next returns the next pair on the page.
+// These functions make calls to HFPage::firstRecord() and
+// HFPage::nextRecord(), and then split the flat record into its
+// two components: namely, the key and pageNo.
+// Should return NOMORERECS when there are no more pairs.
+
+   Status get_first_sp(RID& rid, void *key, PageId & pageNo, PageId spPageNo);
+   Status get_next_sp (RID& rid, void *key, PageId & pageNo, PageId spPageNo);
+
+
+
+
 // ------------------- Left Link ------------------------
 // You will recall that index pages have a left-most
 // pointer that is followed whenever the search key value

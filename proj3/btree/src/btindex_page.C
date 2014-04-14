@@ -48,7 +48,12 @@ Status BTIndexPage::insertKey (const void *key,
         // Call SortedPage::insertRecord() to accomplish the insert.
         status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
         if(status != OK)
+		{
+			if(minibase_errors.error_index() == NO_SPACE)
+				return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
+			else
                 return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXINSERTFAIL);
+		}
         else
                 return OK;
 }
@@ -176,5 +181,100 @@ Status BTIndexPage::get_next(RID& rid, void *key, PageId & pageNo)
         pageNo = tmpdt->pageNo;
 
 	rid = nextRid;
+	return OK;
+}
+
+// calls to HFPage::firstRecord() to get the first key pair    
+Status BTIndexPage::get_first_sp(RID& rid,
+                              void *key,
+                              PageId & pageNo, PageId spPageNo)
+{
+	// get the first record by calling the HFPage function;
+	Status status;
+	HFPage* currPage;
+	status = MINIBASE_BM->pin(spPageNo, (Page*&) currPage);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	status = ((HFPage*)currPage)->firstRecord(rid);
+	if(status != OK)
+	{
+		// return DONE means no record.??
+		if(status == DONE){
+			pageNo = INVALID_PAGE;
+			return NOMORERECS;
+		}
+		else
+			return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
+	}
+	// find the record page by calling the HFPage function;
+	char *rec = NULL;
+	int recLen = 0;
+	
+	status = ((HFPage*)currPage)->returnRecord(rid, rec, recLen);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
+	
+	// get the first data key pair
+	// cast the packed the pageNo.
+	Datatype *tmpdt = NULL;
+	tmpdt->pageNo = pageNo;
+	
+	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
+	// unpack the pageNo.
+	pageNo = tmpdt->pageNo; 
+
+	status = MINIBASE_BM->unpinPage(spPageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return OK;
+}
+
+// calls to HFPage::nextRecord() to get the next key pair
+Status BTIndexPage::get_next_sp(RID& rid, void *key, PageId & pageNo, PageId spPageNo)
+{
+	// get the next record by calling the HFPage function;
+        Status status;
+		HFPage* currPage;
+		status = MINIBASE_BM->pin(spPageNo, (Page*& currPage));
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+
+		RID nextRid;
+        status = ((HFPage*)currPage)->nextRecord(rid, nextRid);
+        if(status != OK)
+        {
+                // return DONE means no record. ??
+                if(status == DONE){
+                        pageNo = INVALID_PAGE;
+                        return NOMORERECS;
+                }
+                else
+                        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
+        }
+
+	 // find the record page by calling the HFPage function;
+        char *rec = NULL;
+        int recLen = 0;
+        status = ((HFPage*)currPage)->returnRecord(nextRid, rec, recLen);
+        if(status != OK)
+                return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
+	
+	// get the next data key pair
+        // cast the packed the pageNo.
+        Datatype *tmpdt = NULL;
+        tmpdt->pageNo = pageNo;
+        get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
+        // unpack the pageNo.
+        pageNo = tmpdt->pageNo;
+
+	rid = nextRid;
+
+	status = MINIBASE_BM->unpinPage(spPageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
 	return OK;
 }

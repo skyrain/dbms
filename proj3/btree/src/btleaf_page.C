@@ -68,7 +68,12 @@ Status BTLeafPage::insertRec(const void *key,
 	// Call SortedPage::insertRecord() to accomplish the insert.
 	status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
 	if(status != OK)
+	{
+		if(minibase_errors.error_index() == NO_SPACE)
+			return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
+
 		return MINIBASE_FIRST_ERROR(BTLEAFPAGE,LEAFINSERTFAIL);
+	}
 	else
 		return OK;
 }
@@ -209,5 +214,112 @@ Status BTLeafPage::get_next (RID& rid,
 	dataRid = tmpdt->rid;
 
 	rid = nextRid;
+	return OK;
+}
+
+
+/* 
+ * These functions provide an
+ * iterator interface to the records on a specific BTLeafPage.
+ * get_first returns the first key, RID from the page,
+ * while get_next returns the next key on the page.
+ * These functions make calls to RecordPage::get_first() and
+ * RecordPage::get_next(), and break the flat record into its
+ * two components: namely, the key and datarid. 
+ */
+Status BTLeafPage::get_first_sp (RID& rid,
+                              void *key,
+                              RID & dataRid,
+							  PageId spPageNo)
+{
+	// get the first record by calling the HFPage function;
+	Status status;
+	HFPage* currPage;
+	status = MINIBASE_BM->pin(spPageNo, (Page*&)currPage);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	status = ((HFPage*)currPage)->firstRecord(rid);
+	if(status != OK)
+	{
+		// return DONE means no record.??
+		if(status == DONE){
+			dataRid.pageNo = INVALID_PAGE;
+			dataRid.slotNo = INVALID_SLOT;
+			return NOMORERECS;
+		}
+		else
+			return MINIBASE_FIRST_ERROR(BTLEAFPAGE, GETRECERROR);
+	}
+	// find the record page by calling the HFPage function;
+	char *rec = NULL;
+	int recLen = 0;
+	status = ((HFPage*)currPage)->returnRecord(rid, rec, recLen);
+	if(status != OK)
+		return MINIBASE_FIRST_ERROR(BTLEAFPAGE, GETRECERROR);
+
+	// get the first data key pair
+	// pack the dataRid into Datatype
+	Datatype *tmpdt = NULL;
+	tmpdt->rid = dataRid;
+	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
+	// unpack the dataRid
+	dataRid = tmpdt->rid;
+
+	status = MINIBASE_BM->unpinPage(spPageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return OK;
+}
+
+Status BTLeafPage::get_next_sp (RID& rid,
+                             void *key,
+                             RID & dataRid
+							 PageId spPageNo)
+{
+	// get the next record by calling the HFPage function;
+        Status status;
+		HFPage* currPage;
+		status = MINIBASE_BM->pin(spPageNo, (Page*&)currPage);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		RID nextRid;
+        status = ((HFPage*)currPage)->nextRecord(rid, nextRid);
+        if(status != OK)
+        {
+                // return DONE means no record. ??
+                if(status == DONE){
+                        dataRid.pageNo = INVALID_PAGE;
+                        dataRid.slotNo = INVALID_SLOT;
+                        return NOMORERECS;
+                }
+                else
+                        return MINIBASE_FIRST_ERROR(BTLEAFPAGE, GETRECERROR);
+        }
+	
+	 // find the record page by calling the HFPage function;
+        char *rec = NULL;
+        int recLen = 0;
+        status = ((HFPage*)currPage)->returnRecord(nextRid, rec, recLen);
+        if(status != OK)
+                return MINIBASE_FIRST_ERROR(BTLEAFPAGE, GETRECERROR);
+	
+	// get the first data key pair
+	// pack the dataRid into Datatype
+	Datatype *tmpdt = NULL;
+	tmpdt->rid = dataRid;
+	tmpdt->pageNo = INVALID_PAGE;
+	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
+	// unpack the dataRid
+	dataRid = tmpdt->rid;
+
+	rid = nextRid;
+
+	status = MINIBASE_BM->unpinPage(spPageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
 	return OK;
 }
