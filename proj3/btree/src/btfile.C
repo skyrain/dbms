@@ -233,11 +233,17 @@ Status BTreeFile::deleteSubTree(PageId pageId){
 	return OK;
 }
 
-//--- key: index entry value to be inserted to upper layer ---
+//--- key: index entry key value to be inserted to upper layer ---
+//--- rid: the intended inserted rid for record ---
+//--- pageNo: current page's page id ---
+//--- upPageNo: copy up or push up PageId, points to new generated page ---
 //--- split: flag whether insert new index entry to upper layer ---
 //--- if split == false, key could be just initialize(not used by upper layer) ---
-Status BTreeFile::insertHelper(const void* key, const RID rid, 
-		PageId pageNo, Keytype key, bool& split)
+//--- uPage: upperPage obj, used for redistribution ---
+//--- ls: left sibling
+
+Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo, 
+		Keytype key, PageId& lUpPageNo, bool& split, HFPage*& uPage)
 {
 	Status status;
 	//--- retrieve pageNo page ---
@@ -249,34 +255,165 @@ Status BTreeFile::insertHelper(const void* key, const RID rid,
 	if(currPage->type == INDEX)
 	{
 		//--- retrieve next level page ---
-		PageId nextPage = 0;
-		status = get_page_no(key, headerPage->keyType, nextPage);
+		PageId nextPageId = 0;
+		status = get_page_no(&key, headerPage->keyType, nextPageId);
 		if(status != OK)
-			return MINBASE_FIRST_ERROR(BTREE, INSERT_FAILED); 
+			return MINBASE_RESULTING_ERROR(BTREE, status, INSERT_FAILED); 
 
 		Keytype lowerKey;
+		PageId lowerUpPageNo = 0;
 		bool lowerSplit = false;
-		status = insertHelper(key, rid, nextPage, lowerKey, lowerSplit);
+		status = insertHelper(&key, rid, nextPageId, lowerKey, 
+				lowerUpPageNo, lowerSplit, currPage);
 
 		//--- check whether lower level adds new index entry ---
 		//--- to this level ---
 		if(lowerSplit)
 		{
-			//--- call insertKey() -----
+			//--- call insertKey() to push up loweKey -----
+			RID insertRid;
+			status = insertKey(&key, headerPage->keyType, nextPageId, insertRid);
+			//--- if insertKey() returns NO_SPACE ---
+			//--- ?? can catch this NO_SPACE ---
+			if(status != OK && minibase_errors.error_index() != NO_SPACE)
+				return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
+			else
+			{
+				//--- try redistribution first ---
+				
+				//--- 1. retrieve left sibling & try to redistribute---
+				//--- add least key into left sibling ---
+				bool lRedi = true;
+				bool rRedi = true;
+				//--- 1.1 retrieve left sibling ---
+				Rid tmpRid;
+				Keytype tmpKey;
+				PageId tmpPageNo;
+				status = get_first_sp(tmpRid, &tmpKey, tmpPageNo, uPage->curPage);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+					
+				//--- if key < least key in uPage, no left sibling ---
+				if(keyCompare(&key, &tmpKey, headerPage->keyType) < 0)
+				{
+					lRedi = false;
+				}	
+				else //--- find left sibling  & try to do left redistribution ---
+				{
+					//--- locate left sibling ---
+					PageId lsibling = tmpPageNo;
+					Rid nextTmpRid = tmpRid;
+					Keytype nextTmpKey;
+					PageId nextTmpPageNo;
+					status = get_next_sp(nextTmpRid, &nextTmpKey, 
+							nextTmpPageNo, uPage->curPage);
+					//--- if only one index entry in parent node ---
+					if(status == NOMORERECS)
+							lsibling = getLeftLink();
+					else if(status != OK)
+					{
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+					}
+					else
+					{
+						Rid nnextTmpRid = nextTmpRid;
+						Keytype nnextTmpKey;
+						PageId nnextTmpPageNo;
+						status = get_next_sp(nnextTmpRid, &nnextTmpKey,
+								nnextTmpPageNo, uPage->curPage);
+						if(status != OK && status != NOMORERECS)
+							return MINIBASE_CHAIN_ERROR(BTREE, status);
+						
+						//--- if key is just bigger than first key ---
+						if(keyCompare(&key, &nextTmpKey, headerPage->keyType) < 0)
+							lsibling = getLeftLink();
+						else if(status == NOMORERECS) // if only two entries
+						{
+							lsibling = tmpPageNo;
+						}
+						else //-- more than 2 keys, and key bigger than second key -
+						{
+							while(true)
+							{
+								if(keyCompare(&key, &nnextTmpKey, 
+											headerPage->keyType) < 0)
+								{
+									lsibling = tmpPageNo;
+									break;
+								}
 
-			//--- if insertKey() not OK, try redistribution first ----
+								//--- update search ---
+								status = get_next_sp(tmpRid, &tmpKey, 
+										tmpPageNo, uPage->curPage);
+								if(status != OK)
+									return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			//--- if redistribution returns false, construct key push up ---
-			//--- mark split = true ---
-		}
+								status = get_next_sp(nextTmpRid, &nextTmpKey, nextTmpPageNo,
+										uPage->curPage);
+								if(status != OK)
+									return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+								status = get_next_sp(nnextTmpRid, &nnextTmpKey,
+										nnextTmpPageNo, uPage->curPage);
+								if(status != OK && status != NOMORERECS)
+									return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+								//--- check if nnext reach end ---
+								if(status == NOMORERECS)
+								{
+									lsibling = tmpPageNo;
+									break;
+								}
+							}
+						}
+					} // find left sibling page no 
+
+					if(lRedi)
+					{
+						//--- do left redistribution --- 
+
+						//--- pin left sibling ---
+						HFPage* ls;
+						status = MINIBASE_BM->pinPage(lsibling, (Page*& )ls);
+						if(status != OK)
+							return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+						//--- get overflow least key index entry in pageNo page ---
+
+						//--- copy up the least key ----
+						//--- to replace previous key ---
+						
+						//--- insert new index entry in the overflow page ---
+
+						//--- insert the copied up least key into left sibling ---
+
+					}
+				}// try left sibling redist --
+				
+				//--- 2. retrieve right sibling & try to redistribute---
+				//--- add least key into left sibling ---
+				if(!lRedi)
+				{
+
+				}
+				
+				//--- 3. if both redistribution returns false, split & ---
+				//---construct key push up ---
+				if(!lRedi && !rRedi)
+				{
+					//--- mark split = true ---
+				}
+			}// need redis or split 
+		} // lowerSplit true
 	}
 	else
 	{
 		RID keyRid;
 		status = insertRec(key, headerPage->keyType, rid, keyRid);
-		if(status != OK)
+		if(status != OK && minibase_errors.error_index() != NO_SPACE)
+			return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
+		else
 		{
-			//---- try redistribution first  ----
+			//--- try redistribution first ---
 
 			//--- if redistribution returns false, construct key copy up--
 			//--- mark split = true  ---
