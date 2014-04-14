@@ -28,7 +28,26 @@ public:
     // destructor
     ~BTreeFileScan();
 private:
-
+	// range of the scan.
+	const void *lo_key;
+	const void *hi_key;
+	
+	// Meta data of the scanning btree.
+	int keySize;
+	RID curRid;	
+	Page *curPage;
+	AttrType keyType;
+	bool curDeleted;
+	PageId rootPageId;
+	
+	// Constructor with scan parameters.
+	BTreeFileScan(const void *l, const void *h, AttrType keytype, int keysize, PageId rootid);
+	
+	// Supporting function for the constructor, it will find the left most node of the tree.
+	Status fromLeftMostPage(PageId pageid);
+	
+	// Supporting function for the constructor, it will find the low key node of the tree.
+	Status fromLowPage(PageId pageid);
 };
 
 #endif

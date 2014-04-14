@@ -63,12 +63,12 @@ Status BTIndexPage::insertKey (const void *key,
 Status BTIndexPage::deleteKey (const void *key, AttrType key_type, RID& curRid)
 {
 	// delete, only marks the corresponding leaf entry as deleted???
-	Status status;
-	status = SortedPage::deleteRecord(curRid);
-	if(status != OK)
-		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXDELFAIL);
+	//Status status;
+	//status = SortedPage::deleteRecord(curRid);
+	//if(status != OK)
+	//	return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXDELFAIL);
 	
-	return OK;
+	//return OK;
 }
 
 // ------------------ get_page_no -----------------------
