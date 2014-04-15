@@ -159,13 +159,11 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 
 	if((int)this->freeSpace < recLen + (int)sizeof(slot_t) && emptySlotNo == -1)
 	{
-		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
-		//return DONE;
+		return DONE;
 	}
 	else if((int)this->freeSpace < recLen && emptySlotNo != -1)
 	{
-		return MINIBASE_FIRST_ERROR(HEAPFILE, NO_SPACE);
-		//return DONE;
+		return DONE;
 	}
 	else
 	{
@@ -398,6 +396,7 @@ int HFPage::available_space(void)
 
 	if(allSlotFull)
 		return this->freeSpace - sizeof(slot_t);
+
 
 	return this->freeSpace;
 }

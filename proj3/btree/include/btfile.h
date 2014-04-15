@@ -36,6 +36,10 @@ enum btErrCodesa{
 	DELETE_TREE_ERROR,
 	INSERT_FAILED,
 	ROOT_ALLOC_ERROR,
+	DELETE_ERROR,
+	REC_NOT_FOUND,
+	GET_PAGE_NO_ERROR,
+	
 };
 
 class BTreeFile: public IndexFile

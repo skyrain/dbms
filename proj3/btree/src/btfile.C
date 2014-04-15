@@ -11,6 +11,7 @@
 #include "new_error.h"
 #include "btfile.h"
 #include "btreefilescan.h"
+#include "heapfile.h"
 
 // Define your error message here
 const char* BtreeErrorMsgs[] = {
@@ -31,9 +32,9 @@ const char* BtreeErrorMsgs[] = {
   // KEY_TOO_LONG
   "INSERT_FAILED"
   "Can't create root"// COULD_NOT_CREATE_ROOT
-  // DELETE_DATAENTRY_FAILED
-  // DATA_ENTRY_NOT_FOUND
-  // CANT_GET_PAGE_NO
+  "Delete entry failed"// DELETE_DATAENTRY_FAILED
+  "Record not found"// DATA_ENTRY_NOT_FOUND
+  "Can't get page no"// CANT_GET_PAGE_NO
   // CANT_ALLOCATE_NEW_PAGE
   // CANT_SPLIT_LEAF_PAGE
   // CANT_SPLIT_INDEX_PAGE
@@ -277,9 +278,10 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					headerPage->keyType, lowerUpPageNo, insertRid);
 			//--- if insertKey() returns NO_SPACE ---
 			//--- ?? can catch this NO_SPACE ---
-			if(status != OK && minibase_errors.error_index() != NO_SPACE)
+			if(status != OK && status != DONE)
 				return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-			else if(status == NO_SPACE)//---- need redis or split ---
+			// weng else if(status != DONE)//---- need redis or split ---
+			else if(status == DONE)//---- need redis or split ---
 			{
 				//--- check whether pageNo is the root page ---
 				//--- if so, split & update root page ---
@@ -314,7 +316,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					//--- is before mid or after mid ---
 					RID tRid;
 					Keytype tKey;
-					PageId tPageNo
+					PageId tPageNo;
 					status = ((BTIndexPage*)currPage)->get_first(tRid, &tKey, tPageNo);
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -361,7 +363,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, tPageNo, tInsertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 						
 						//--- delete ---
@@ -383,7 +385,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, lowerUpPageNo, insertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 					}
 					else
@@ -392,7 +394,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, lowerUpPageNo, insertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 					}
 					
@@ -405,7 +407,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							newPageId, insertRid);
 					//--- if insertKey() returns NO_SPACE ---
 					//--- ?? can catch this NO_SPACE ---
-					if(status != OK && minibase_errors.error_index() != NO_SPACE)
+					if(status != OK && status != DONE)
 						return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 				
 					//--- 6. delete step 5 mid entry from new page(push up) ---
@@ -558,7 +560,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					if(keyCompare(&lowerKey, &tKey, headerPage->keyType) < 0)
 					{
 						status = ((BTIndexPage*)ls)->insertKey(&lowerKey, headerPage->keyType, lowerUpPageNo, insertRid);
-						if(status != OK && minibase_errors.error_index() == NO_SPACE)
+						if(status != OK && status == DONE)
 							lRedi = false;	
 						else if(status != OK)
 							return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -589,7 +591,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								endKey = tKey;
 							}
 							//--- push up end entry into uPage --- 
-							status = ((BTIndexPage *)uPage)->deletetKey(&lKey,
+							status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
 									headerPage->keyType, insertRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -623,7 +625,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						//--- insert least key into left sibling ---
 						status = ((BTIndexPage *)ls)->insertKey(&tKey, 
 								headerPage->keyType, tPageNo, insertRid);
-						if(status != OK && minibase_errors.error_index() == NO_SPACE)
+						if(status != OK && status == DONE)
 							lRedi = false;	
 						else if(status != OK)
 							return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -631,13 +633,13 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						if(lRedi)
 						{
 							//--- delete least key in pageNo page ---
-							status = ((BTIndexPage *)currPage)->deletetKey(&tKey,
+							status = ((BTIndexPage *)currPage)->deleteKey(&tKey,
 									headerPage->keyType, insertRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
 						
 							//--- delete useless key in uPage ---
-							status = ((BTIndexPage *)uPage)->deletetKey(&lKey,
+							status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
 									headerPage->keyType, insertRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -693,7 +695,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						//--- if only one index entry in parent node ---
 						if(status == NOMORERECS)
 						{
-							rRedis = false;
+							rRedi = false;
 						}
 						else if(status != OK)
 						{
@@ -704,7 +706,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							RID nnextTmpRid = nextTmpRid;
 							Keytype nnextTmpKey;
 							PageId nnextTmpPageNo;
-							status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKe										y, nnextTmpPageNo);
+							status = ((BTIndexPage*)uPage)->get_next(nextTmpRid, &nnextTmpKey, nnextTmpPageNo);
 							if(status != OK && status != NOMORERECS)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -717,7 +719,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							}
 							else if(status == NOMORERECS) // if only two entries
 							{
-								rRedis = false;
+								rRedi = false;
 							}
 							else //-- more than 2 keys, and key bigger than second key -
 							{
@@ -750,7 +752,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 									//--- check if nnext reach end ---
 									if(status == NOMORERECS)
 									{
-										rRedis = false;
+										rRedi = false;
 										break;
 									}
 								}
@@ -758,7 +760,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						} // find right sibling page no 
 
 						//--- do right redistribution --- 
-						if(rRedis)
+						if(rRedi)
 						{
 							//--- pin right sibling ---
 							HFPage* rs;
@@ -805,7 +807,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 										headerPage->keyType, endPageNo, insertRid);
 								
 								if(status != OK &&
-										minibase_errors.error_index() == NO_SPACE)
+										status == DONE)
 									rRedi = false;	
 								else if(status != OK)
 									return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -814,7 +816,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								if(rRedi)
 								{
 									//--- delete cur page end try ---
-									status = ((BTIndexPage *)currPage)->deletetKey(&endKey,
+									status = ((BTIndexPage *)currPage)->deleteKey(&endKey,
 											headerPage->keyType, insertRid);
 									if(status != OK)
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -826,7 +828,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 									//--- push up end entry into uPage --- 
-									status = ((BTIndexPage *)uPage)->deletetKey(&rKey,
+									status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
 											headerPage->keyType, insertRid);
 									if(status != OK)
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -854,7 +856,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 										headerPage->keyType, lowerUpPageNo, insertRid);
 
 								if(status != OK &&
-										minibase_errors.error_index() == NO_SPACE)
+										status == DONE)
 									rRedi = false;	
 								else if(status != OK)
 									return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -863,7 +865,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								if(rRedi)
 								{
 									//--- push up end entry into uPage --- 
-									status = ((BTIndexPage *)uPage)->deletetKey(&rKey,
+									status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
 											headerPage->keyType, insertRid);
 									if(status != OK)
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -910,8 +912,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					Page * newPage;
 					status = MINIBASE_BM->newPage(newPageId, (Page *&)newPage);
 					if(status != OK){
-						returnStatus = MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
-						return returnStatus;
+						return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
+						// weng //return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
 					}
 					((BTIndexPage *)newPage)->init(newPageId);
 					//--- copy mid to end entries to new page from pageNo page ---
@@ -920,7 +922,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					//--- is before mid or after mid ---
 					RID tRid;
 					Keytype tKey;
-					PageId tPageNo
+					PageId tPageNo;
 						status = ((BTIndexPage*)currPage)->get_first(tRid, &tKey, tPageNo);
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -967,7 +969,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, tPageNo, tInsertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
 						//--- delete ---
@@ -989,7 +991,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, lowerUpPageNo, insertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 					}
 					else
@@ -998,7 +1000,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, lowerUpPageNo, insertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 					}
 
@@ -1007,8 +1009,9 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					status = ((BTIndexPage*)newPage)->get_first(tRid, &tKey, tPageNo);
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-					l_Key = tKey;
+					
+					// weng &tKey
+					l_Key = &tKey;
 					l_UpPageNo = newPageId;
 
 					//--- 6. delete step 5 mid entry from new page(push up) ---
@@ -1046,9 +1049,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 			}//?? redis or split 
 		} //--- ??lowe splitis true
 	}//? currPage is index page
-} //---? function
 
-/*			
+///*			
 		else //--- currPage is leaf page ---
 		{
 			//--- call insertRec() to insert key & rid -----
@@ -1057,9 +1059,9 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					headerPage->keyType, rid, insertRid);
 			//--- if insertRec() returns NO_SPACE ---
 			//--- ?? can catch this NO_SPACE ---
-			if(status != OK && minibase_errors.error_index() != NO_SPACE)
+			if(status != OK && status != DONE)
 				return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-			else if(status == NO_SPACE)//---- need redis or split ---
+			else if(status == DONE)//---- need redis or split ---
 			{
 				//--- check whether pageNo is the root page ---
 				//--- if so, split & update root page ---
@@ -1068,17 +1070,22 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					//--- split ---
 					//--- create a new root page ---
 					// allocate a root page to the header page.
+					// weng 
+					AttrType keytype = headerPage->keyType; 
+					int keysize = headerPage->keysize;					
+	
 					PageId rootPageId = INVALID_PAGE;
 					Page * rootPage;
 					// allocate a root page by calling newPage.
 					status = MINIBASE_BM->newPage(rootPageId, (Page *&)rootPage);
 					if(status != OK){
-						returnStatus = MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
-						return returnStatus;
+						return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
+						
 					}
 
 					// Store the meta info into the header page.
 					headerPage->rootPageId = rootPageId;
+					// weng keytype is the same
 					headerPage->keyType = keytype;
 					headerPage->keysize = keysize;
 					((BTIndexPage *)rootPage)->init(rootPageId);
@@ -1088,8 +1095,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					Page * newPage;
 					status = MINIBASE_BM->newPage(newPageId, (Page *&)newPage);
 					if(status != OK){
-						returnStatus = MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
-						return returnStatus;
+						return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
+						
 					}
 					((BTLeafPage *)newPage)->init(newPageId);
 					//--- copy mid to end entries to new page from pageNo page ---
@@ -1098,7 +1105,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					//--- is before mid or after mid ---
 					RID tRid;
 					Keytype tKey;
-					PageId tDataRid;
+					// weng PageId tDataRid;
+					RID tDataRid;
 						status = ((BTLeafPage*)currPage)->get_first(tRid, &tKey, tDataRid);
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1108,7 +1116,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 
 					while(true)
 					{
-						if(keyCompare(&lowerKey, &tKey, 
+						// weng KeyCompare(&l_Key...
+						if(keyCompare(&loweerKey, &tKey, 
 									headerPage->keyType) < 0)
 							lKeyPos = totalEntry;
 
@@ -1147,7 +1156,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, tDataRid, tInsertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
 						//--- delete ---
@@ -1172,7 +1181,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, rid, insertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 					}
 					else
@@ -1181,7 +1190,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								headerPage->keyType, rid, insertRid);
 						//--- if insertKey() returns NO_SPACE ---
 						//--- ?? can catch this NO_SPACE ---
-						if(status != OK && minibase_errors.error_index() != NO_SPACE)
+						if(status != OK && status != DONE)
 							return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 					}
 
@@ -1194,7 +1203,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							headerPage->keyType, newPageId, insertRid);
 					//--- if insertKey() returns NO_SPACE ---
 					//--- ?? can catch this NO_SPACE ---
-					if(status != OK && minibase_errors.error_index() != NO_SPACE)
+					if(status != OK && status != DONE)
 						return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
 					//---6. set root page left link ---
@@ -1339,7 +1348,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					{
 						status = ((BTLeafPage*)ls)->insertRec(&key, 
 								headerPage->keyType, tDataRid, insertRid);
-						if(status != OK && minibase_errors.error_index() == NO_SPACE)
+						if(status != OK && status == DONE)
 							lRedi = false;	
 						else if(status != OK)
 							return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1371,7 +1380,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								endKey = tKey;
 							}
 							//--- push up end entry into uPage --- 
-							status = ((BTIndexPage *)uPage)->deletetKey(&lKey,
+							status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
 									headerPage->keyType, insertRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1406,7 +1415,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						//--- insert least key into left sibling ---
 						status = ((BTLeafPage*)ls)->insertRec(&tKey, 
 								headerPage->keyType, tDataRid, insertRid);
-						if(status != OK && minibase_errors.error_index() == NO_SPACE)
+						if(status != OK && status == DONE)
 							lRedi = false;	
 						else if(status != OK)
 							return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1414,12 +1423,12 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						if(lRedi)
 						{
 							//--- delete least key in pageNo page ---
-							status = ((SortedPage*)currPage)->deletetRecord(tRid);
+							status = ((SortedPage*)currPage)->deleteRecord(tRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 							//--- delete useless key in uPage ---
-							status = ((BTIndexPage *)uPage)->deletetKey(&lKey,
+							status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
 									headerPage->keyType, insertRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1475,7 +1484,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						//--- if only one index entry in parent node ---
 						if(status == NOMORERECS)
 						{
-							rRedis = false;
+							rRedi = false;
 						}
 						else if(status != OK)
 						{
@@ -1486,7 +1495,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							RID nnextTmpRid = nextTmpRid;
 							Keytype nnextTmpKey;
 							PageId nnextTmpPageNo;
-							status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKe										y, nnextTmpPageNo);
+							status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey, nnextTmpPageNo);
 							if(status != OK && status != NOMORERECS)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -1499,7 +1508,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							}
 							else if(status == NOMORERECS) // if only two entries
 							{
-								rRedis = false;
+								rRedi = false;
 							}
 							else //-- more than 2 keys, and key bigger than second key -
 							{
@@ -1532,7 +1541,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 									//--- check if nnext reach end ---
 									if(status == NOMORERECS)
 									{
-										rRedis = false;
+										rRedi = false;
 										break;
 									}
 								}
@@ -1540,7 +1549,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						} // find right sibling page no 
 
 						//--- do right redistribution --- 
-						if(rRedis)
+						if(rRedi)
 						{
 							//--- pin right sibling ---
 							HFPage* rs;
@@ -1568,7 +1577,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 							RID endRid = tDataRid;
 							while(true)
 							{
-								status = ((BTLeaf*)currPage)->get_next(tRid, 
+								status = ((BTLeafPage *)currPage)->get_next(tRid, 
 										&tKey, tDataRid);
 								if(status != OK && status != NOMORERECS)
 									return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1588,7 +1597,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 										headerPage->keyType, endRid, insertRid);
 
 								if(status != OK &&
-										minibase_errors.error_index() == NO_SPACE)
+										status == DONE)
 									rRedi = false;	
 								else if(status != OK)
 									return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1597,7 +1606,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								if(rRedi)
 								{
 									//--- delete cur page end try ---
-									status = ((SortedPage*)currPage)->deletetRecord(endRid);
+									status = ((SortedPage*)currPage)->deleteRecord(endRid);
 									if(status != OK)
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -1608,7 +1617,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 									//--- push up end entry into uPage --- 
-									status = ((BTIndexPage *)uPage)->deletetKey(&rKey,
+									status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
 											headerPage->keyType, insertRid);
 									if(status != OK)
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1636,7 +1645,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 										headerPage->keyType, rid, insertRid);
 
 								if(status != OK &&
-										minibase_errors.error_index() == NO_SPACE)
+										status == DONE)
 									rRedi = false;	
 								else if(status != OK)
 									return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1645,7 +1654,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								if(rRedi)
 								{
 									//--- push up end entry into uPage --- 
-									status = ((BTIndexPage *)uPage)->deletetKey(&rKey,
+									status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
 											headerPage->keyType, insertRid);
 									if(status != OK)
 										return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1692,8 +1701,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						Page * newPage;
 						status = MINIBASE_BM->newPage(newPageId, (Page *&)newPage);
 						if(status != OK){
-							returnStatus = MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
-							return returnStatus;
+							return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
+							
 						}
 						((BTLeafPage *)newPage)->init(newPageId);
 						//--- copy mid to end entries to new page from pageNo page ---
@@ -1749,15 +1758,16 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 						{
 							//--- copy ---
 							RID tInsertRid;
-							status = ((BTLeafPage*)newPage)->insertKey(&tKey, 
+							status = ((BTLeafPage*)newPage)->insertRec(&tKey, 
 									headerPage->keyType, tDataRid, tInsertRid);
 							//--- if insertKey() returns NO_SPACE ---
 							//--- ?? can catch this NO_SPACE ---
-							if(status != OK && minibase_errors.error_index() != NO_SPACE)
+							if(status != OK && status != DONE)
 								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
 							//--- delete ---
-							status = ((BTLeafPage*)currPage)->deleteKey(&tKey, 
+							// weng, should call deleteRecord(RID rid) in hfpage.
+							status = ((BTLeafPage*)currPage)->deleteRec(&tKey, 
 									headerPage->keyType, tInsertRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1777,7 +1787,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 									headerPage->keyType, rid, insertRid);
 							//--- if insertKey() returns NO_SPACE ---
 							//--- ?? can catch this NO_SPACE ---
-							if(status != OK && minibase_errors.error_index() != NO_SPACE)
+							if(status != OK && status != DONE)
 								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 						}
 						else
@@ -1786,7 +1796,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 									headerPage->keyType, rid, insertRid);
 							//--- if insertKey() returns NO_SPACE ---
 							//--- ?? can catch this NO_SPACE ---
-							if(status != OK && minibase_errors.error_index() != NO_SPACE)
+							if(status != OK && status != DONE)
 								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 						}
 
@@ -1796,8 +1806,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								&tKey, tDataRid);
 						if(status != OK)
 							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						l_Key = tKey;
+						// weng l_Key = &tKey
+						l_Key = &tKey;
 						l_UpPageNo = newPageId;
 
 						//---  unpin cur, new page ---
@@ -1822,15 +1832,16 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				return OK;
 			}
 		}
-*/
-
+//*/ weng
+	return OK;
+} //---? function
 
 Status BTreeFile::insert(const void *key, const RID rid) {
 	// put your code here
 	Status status;
 	//--- retrieve root page ---
 	HFPage* rootPage;
-	status = MINIBASE_BM->pinPage(headerPage->rootPageId, (Page*& rootPage));
+	status = MINIBASE_BM->pinPage(headerPage->rootPageId, (Page*&) rootPage);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
@@ -1838,11 +1849,11 @@ Status BTreeFile::insert(const void *key, const RID rid) {
 	Keytype lowerKey;
 	PageId lowerUpPageNo;
 	bool lowerSplit = false;
-	status = insertHelper(key, rid, headerPage->rootPageId, lowerKey, 
-		lowerUpPageNo, lowerSplit, NULL)
+	status = insertHelper(key, rid, headerPage->rootPageId, &lowerKey, 
+		lowerUpPageNo, lowerSplit, NULL);
 
 	if(status != OK)
-		return MINIBASE_RESULTING_ERROR(BTREE, status, INSERT_FAILED);
+		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
   return OK;
 }

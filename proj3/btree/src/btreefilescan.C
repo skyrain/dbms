@@ -23,7 +23,6 @@ BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int
 	// Pass the value to the file.
 	this->keyType = keytype;
 	this->keySize = keysize;
-	this->rootPageId = headerPage->rootPageId;
 	this->curDeleted = true;
 	this->lo_key = l;
 	this->hi_key = h;
