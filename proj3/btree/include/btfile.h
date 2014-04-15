@@ -13,6 +13,7 @@
 #include "index.h"
 #include "btreefilescan.h"
 #include "bt.h"
+#include "new_error.h"
 
 // Define the headerPage to hold the information about the tree as a whole
 struct HeaderPage{
@@ -90,13 +91,16 @@ class BTreeFile: public IndexFile
 	Status deleteSubTree(PageId pageId);  
     // Supporting function for destroyFile(), recursively delete the subtree of input node
 	
-	//--- insert helper ---
-	//--- key: index entry value to be inserted to upper layer ---
-	//--- split: flag whether insert new index entry to upper layer ---
-	//--- if split == false, key could be just initialize(not used by upper laye	r) ---
-	Status insertHelper(const void* key, const RID rid, 
-			PageId pageNo, Keytype key, bool& split);
 
+	//--- key: index entry key value to be inserted to upper layer ---
+	//--- rid: the intended inserted rid for record ---
+	//--- pageNo: current page's page id ---
+	//--- upPageNo: copy up or push up PageId, points to new generated page ---
+	//--- split: flag whether insert new index entry to upper layer ---
+	//--- if split == false, key could be just initialize(not used by upper layer) ---
+	 //--- uPage: upperPage obj, used for redistribution ---
+	 //--- ls: left sibling 
+	Status insertHelper(const void* key, const RID rid, PageId pageNo,void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage*& uPage);
 
 };
 

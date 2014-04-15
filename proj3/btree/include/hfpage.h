@@ -47,7 +47,8 @@ class HFPage {
 
     char      data[MAX_SPACE - DPFIXED]; 
   public:
-    void init(PageId pageNo);   // initialize a new page
+	short get_type(void){return type;};
+	void init(PageId pageNo);   // initialize a new page
     void dumpPage();            // dump contents of a page
 
     PageId getNextPage();       // returns value of nextPage
