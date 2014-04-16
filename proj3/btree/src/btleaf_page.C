@@ -70,7 +70,7 @@ Status BTLeafPage::insertRec(const void *key,
 	if(status != OK)
 	{
 		if(status == DONE)
-			return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
+			return DONE;
 
 		return MINIBASE_FIRST_ERROR(BTLEAFPAGE,LEAFINSERTFAIL);
 	}
@@ -137,6 +137,7 @@ Status BTLeafPage::get_data_rid(void *key,
  * iterator interface to the records on a BTLeafPage.
  * get_first returns the first key, RID from the page,
  * while get_next returns the next key on the page.
+
  * These functions make calls to RecordPage::get_first() and
  * RecordPage::get_next(), and break the flat record into its
  * two components: namely, the key and datarid. 
@@ -168,7 +169,7 @@ Status BTLeafPage::get_first (RID& rid,
 
 	// get the first data key pair
 	// pack the dataRid into Datatype
-	Datatype *tmpdt = NULL;
+	Datatype *tmpdt = new Datatype;
 	tmpdt->rid = dataRid;
 	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
 	// unpack the dataRid
@@ -206,7 +207,7 @@ Status BTLeafPage::get_next (RID& rid,
 	
 	// get the first data key pair
 	// pack the dataRid into Datatype
-	Datatype *tmpdt = NULL;
+	Datatype *tmpdt = new Datatype;
 	tmpdt->rid = dataRid;
 	tmpdt->pageNo = INVALID_PAGE;
 	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
@@ -260,7 +261,7 @@ Status BTLeafPage::get_first_sp (RID& rid,
 
 	// get the first data key pair
 	// pack the dataRid into Datatype
-	Datatype *tmpdt = NULL;
+	Datatype *tmpdt = new Datatype;
 	tmpdt->rid = dataRid;
 	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
 	// unpack the dataRid
@@ -308,7 +309,7 @@ Status BTLeafPage::get_next_sp (RID& rid,
 	
 	// get the first data key pair
 	// pack the dataRid into Datatype
-	Datatype *tmpdt = NULL;
+	Datatype *tmpdt = new Datatype;
 	tmpdt->rid = dataRid;
 	tmpdt->pageNo = INVALID_PAGE;
 	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);

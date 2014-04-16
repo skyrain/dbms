@@ -50,9 +50,9 @@ Status BTIndexPage::insertKey (const void *key,
         if(status != OK)
 		{
 			if(status == DONE)
-				return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
+				return DONE;
 			else
-                return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXINSERTFAIL);
+                		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXINSERTFAIL);
 		}
         else
                 return OK;
@@ -217,7 +217,7 @@ Status BTIndexPage::get_first(RID& rid,
 	
 	// get the first data key pair
 	// cast the packed the pageNo.
-	Datatype *tmpdt = NULL;
+	Datatype *tmpdt = new Datatype;
 	tmpdt->pageNo = pageNo;
 	
 	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
@@ -254,7 +254,7 @@ Status BTIndexPage::get_next(RID& rid, void *key, PageId & pageNo)
 	
 	// get the next data key pair
         // cast the packed the pageNo.
-        Datatype *tmpdt = NULL;
+        Datatype *tmpdt = new Datatype;
         tmpdt->pageNo = pageNo;
         get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
         // unpack the pageNo.
@@ -297,7 +297,7 @@ Status BTIndexPage::get_first_sp(RID& rid,
 	
 	// get the first data key pair
 	// cast the packed the pageNo.
-	Datatype *tmpdt = NULL;
+	Datatype *tmpdt = new Datatype;
 	tmpdt->pageNo = pageNo;
 	
 	get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
@@ -344,7 +344,7 @@ Status BTIndexPage::get_next_sp(RID& rid, void *key, PageId & pageNo, PageId spP
 	
 	// get the next data key pair
         // cast the packed the pageNo.
-        Datatype *tmpdt = NULL;
+        Datatype *tmpdt = new Datatype;
         tmpdt->pageNo = pageNo;
         get_key_data(key, tmpdt, (KeyDataEntry *)rec, recLen, (nodetype)type);
         // unpack the pageNo.

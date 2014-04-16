@@ -56,7 +56,12 @@ Status SortedPage::insertRecord (AttrType key_type,
 
 	//--- check whether insert is good ---
 	if(status != OK)
-		return MINIBASE_RESULTING_ERROR(SORTEDPAGE, status, INSERT_REC_FAILED);
+	{
+		if(status == DONE)
+			return DONE;
+		else
+			return MINIBASE_RESULTING_ERROR(SORTEDPAGE, status, INSERT_REC_FAILED);
+	}	
 
 	//---2. rearrange the slot dir ---
 
