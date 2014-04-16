@@ -38,6 +38,7 @@ const char* BtreeErrorMsgs[] = {
   // CANT_ALLOCATE_NEW_PAGE
   // CANT_SPLIT_LEAF_PAGE
   // CANT_SPLIT_INDEX_PAGE
+  "Can't allocate leaf page"
 };
 
 static error_string_table btree_table( BTREE, BtreeErrorMsgs);
@@ -1117,7 +1118,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					while(true)
 					{
 						// weng KeyCompare(&l_Key...
-						if(keyCompare(&loweerKey, &tKey, 
+						if(keyCompare(&l_Key, &tKey, 
 									headerPage->keyType) < 0)
 							lKeyPos = totalEntry;
 
@@ -1766,9 +1767,10 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
 							//--- delete ---
-							// weng, should call deleteRecord(RID rid) in hfpage.
-							status = ((BTLeafPage*)currPage)->deleteRec(&tKey, 
-									headerPage->keyType, tInsertRid);
+							//status = ((BTLeafPage*)currPage)->deleteRecord(&tKey, 
+							//		headerPage->keyType, tInsertRid);
+							// weng, should call deleteRecord(tRid);
+							status = ((BTLeafPage *)currPage)->deleteRecord(tRid);
 							if(status != OK)
 								return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -1849,8 +1851,9 @@ Status BTreeFile::insert(const void *key, const RID rid) {
 	Keytype lowerKey;
 	PageId lowerUpPageNo;
 	bool lowerSplit = false;
+	HFPage *tmpPage = NULL;
 	status = insertHelper(key, rid, headerPage->rootPageId, &lowerKey, 
-		lowerUpPageNo, lowerSplit, NULL);
+		lowerUpPageNo, lowerSplit, tmpPage);
 
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
@@ -1858,18 +1861,125 @@ Status BTreeFile::insert(const void *key, const RID rid) {
   return OK;
 }
 
+// Delete the data (key, rid) pairs
 Status BTreeFile::Delete(const void *key, const RID rid) {
-  // put your code here
+        Status status;
+	PageId pageNo = headerPage->rootPageId;
+	// delete start from accessing the root node.
+        status = deleteHelper(key, rid, pageNo);
+        if(status != OK)
+                return MINIBASE_FIRST_ERROR(BTREE, DELETE_ERROR);
 
-  return OK;
+        return OK;
 }
-    
+
+// Supporting function for Delete(), recursively find the leaf node and delete the leaf node.
+// Only implemented delete in the leaf node without redistribution when the record drop below the half.
+Status BTreeFile::deleteHelper(const void *key, const RID rid, PageId pageNo)
+{
+        // ************* //
+        Status status;
+        short type;
+        Page *tmpPage = NULL;
+        SortedPage *tmpSPage = NULL;
+        BTIndexPage *tmpIPage = NULL;
+        BTLeafPage *tmpLPage = NULL;
+
+        status = MINIBASE_BM->pinPage(pageNo, tmpPage);
+        if(status != OK)
+                return MINIBASE_FIRST_ERROR(BTREE, CANT_PIN_PAGE);
+
+        tmpSPage = (SortedPage *)tmpPage;
+        type = tmpSPage->get_type();
+
+        // If it's a index page, recursively calling helper until find the leaf page.
+        if(type == INDEX){
+                PageId tmpId;
+                tmpIPage = (BTIndexPage *)tmpPage;
+                // Get_page_no will decide which index page to go.
+                status = tmpIPage->get_page_no(key, headerPage->keyType, tmpId);
+                if(status != OK)
+                        return MINIBASE_FIRST_ERROR(BTREE, GET_PAGE_NO_ERROR);
+
+                // Recursively find the page until it's a leaf node.
+                status = deleteHelper(key, rid, tmpId);
+                if(status != OK)
+                        return MINIBASE_FIRST_ERROR(BTREE, DELETE_ERROR);
+
+        }
+
+        // if it's a leaf page, find the record and call deleteRecord.
+        if(type == LEAF){
+                RID tmpRid;
+                AttrType keyType;
+                KeyDataEntry tmpEntry;
+                tmpLPage = (BTLeafPage *)tmpPage;
+                keyType = headerPage->keyType;
+
+                status = tmpLPage->get_first(tmpRid, &tmpEntry.key, tmpEntry.data.rid);
+                if(status != OK)
+                        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+                // Calling KeyCompare until find the entry that needed to be deleted
+                int res = 0;
+                res = keyCompare(key, &tmpEntry.key, keyType);
+                while(res >= 0){
+                        // find exactlt the data record, delete it
+                        if((tmpEntry.data.rid == rid) && res == 0)
+                        {
+                                status = tmpLPage->deleteRecord(tmpRid);
+                                if(status != OK)
+                                        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+                                // ??? duplicate record, and if the page is empty.
+                                break;
+                        }else
+                        {
+                                // else get next record,
+                                status = tmpLPage->get_next(tmpRid, &tmpEntry.key, tmpEntry.data.rid);
+                                if(status != OK)
+                                {
+                                        if(status == NOMORERECS)
+                                                return MINIBASE_FIRST_ERROR(BTREE, REC_NOT_FOUND);
+                                        else
+                                                return MINIBASE_CHAIN_ERROR(BTREE, status);
+                                }
+                        }
+                }
+        }
+
+        // unpin the searching page at end.
+        status = MINIBASE_BM->unpinPage(pageNo);
+        if(status != OK)
+                return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+	
+	return OK;
+} 
+
+// create a scan with given keys, dealing with the following cases.
+// It will call the btreefilescan to do the job recursively.
+    // Cases:
+    //      (1) lo_key = NULL, hi_key = NULL
+    //              scan the whole index
+    //      (2) lo_key = NULL, hi_key!= NULL
+    //              range scan from min to the hi_key
+    //      (3) lo_key!= NULL, hi_key = NULL
+    //              range scan from the lo_key to max
+    //      (4) lo_key!= NULL, hi_key!= NULL, lo_key = hi_key
+    //              exact match ( might not unique)
+    //      (5) lo_key!= NULL, hi_key!= NULL, lo_key < hi_key
+    //              range scan from lo_key to hi_key 
 IndexFileScan *BTreeFile::new_scan(const void *lo_key, const void *hi_key) {
-  // put your code here
-  return NULL;
+	IndexFileScan * scan;	
+	int keysize = headerPage->keysize;
+	AttrType keytype = headerPage->keyType;
+	PageId rootid = headerPage->rootPageId;
+	scan = new BTreeFileScan(lo_key, hi_key, keytype, keysize, rootid);
+	return scan;
 }
 
-int keysize(){
-  // put your code here
-  return 0;
+int BTreeFile::keysize(){
+	int keysize;
+	keysize = headerPage->keysize;
+	return keysize;
 }

@@ -49,7 +49,7 @@ Status BTIndexPage::insertKey (const void *key,
         status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
         if(status != OK)
 		{
-			if(minibase_errors.error_index() == NO_SPACE)
+			if(status == DONE)
 				return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
 			else
                 return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXINSERTFAIL);
@@ -65,7 +65,7 @@ Status BTIndexPage::deleteKey (const void *key, AttrType key_type, RID& curRid)
 	// In this case, delete an index entry only happen during push up.
 	Status status;
 	PageId tmpId;
-	Keytype tmpkey;
+	Keytype tmpKey;
 	int found = 0;
 	
 	status = get_first(curRid, (void *)&tmpKey, tmpId);
@@ -80,7 +80,7 @@ Status BTIndexPage::deleteKey (const void *key, AttrType key_type, RID& curRid)
 		status = get_next(curRid, (void *)&tmpKey, tmpId);
 		if(status != OK)
 			break;
-		res = keyCompare(key, (void *(&tmpKey, key_type);
+		res = keyCompare(key, (void *)&tmpKey, key_type);
 	}
 	
 	// when break with the while loop, determine whether find the record exactly
@@ -106,13 +106,14 @@ Status BTIndexPage::get_page_no(const void *key,
                                 AttrType key_type,
                                 PageId & pageNo)
 {
+	Status status;
 	RID tmpRid;
 	Keytype curKey;
 	PageId curId;
 	int res;
 
 	res = 0;
-	tmpId = INVALID_PAGE;	
+	curId = INVALID_PAGE;	
 
 	// if the key is NULL, return current page
 	if(key == NULL)
@@ -123,10 +124,10 @@ Status BTIndexPage::get_page_no(const void *key,
 	
 	status = get_first(tmpRid, &curKey, curId);
 	if(status != OK)
-		return MINIBASE_FRIRT_ERROR(BTINDEXPAGE, GETRECERROR);
+		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
 
 	// if the key small than the first key, return left link of the index.
-	res = KeyCompare(key, &curKey, curId);
+	res = keyCompare(key, &curKey, key_type);
 	if(res < 0)
 	{
 		pageNo = getLeftLink();
@@ -137,9 +138,9 @@ Status BTIndexPage::get_page_no(const void *key,
 	if(res >= 0)
 	{
 		bool larger_than_prev = false;
-		bool smaller_than_next = false
+		bool smaller_than_next = false;
 		PageId prevId;
-		Kettype prevKey;
+		Keytype prevKey;
 		int prev = 0;
 		int next = 0;
 		int numKeys = ((SortedPage*)this)->numberOfRecords();
@@ -156,12 +157,12 @@ Status BTIndexPage::get_page_no(const void *key,
 				if(status == NOMORERECS)
 					break;
 				else
-					return MINIBASE_FIRST_ERROR(BTINDEXTREE, GETRECERROR);
+					return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
 			}
 
 			// Compare the key with its previous and next key.
-			prev = KeyCompare(key, &prevKey, key_type);
-			next = KeyCompare(key, &curKey, key_type);
+			prev = keyCompare(key, &prevKey, key_type);
+			next = keyCompare(key, &curKey, key_type);
 			if(prev >= 0)
 				larger_than_prev = true;
 			if(next < 0)
@@ -185,7 +186,7 @@ Status BTIndexPage::get_page_no(const void *key,
 		pageNo = prevId;
 		return OK;
 	}
-	return MINIBASE_FIRST_ERROR(BTINDEXTREE, GETRECERROR);
+	return MINIBASE_FIRST_ERROR(BTINDEXPAGE, GETRECERROR);
 }
 
 // calls to HFPage::firstRecord() to get the first key pair    
@@ -271,7 +272,7 @@ Status BTIndexPage::get_first_sp(RID& rid,
 	// get the first record by calling the HFPage function;
 	Status status;
 	HFPage* currPage;
-	status = MINIBASE_BM->pin(spPageNo, (Page*&) currPage);
+	status = MINIBASE_BM->pinPage(spPageNo, (Page*&) currPage);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
@@ -316,7 +317,7 @@ Status BTIndexPage::get_next_sp(RID& rid, void *key, PageId & pageNo, PageId spP
 	// get the next record by calling the HFPage function;
         Status status;
 		HFPage* currPage;
-		status = MINIBASE_BM->pin(spPageNo, (Page*& currPage));
+		status = MINIBASE_BM->pinPage(spPageNo, (Page*&)currPage);
 		if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 

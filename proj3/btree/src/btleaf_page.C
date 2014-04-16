@@ -69,7 +69,7 @@ Status BTLeafPage::insertRec(const void *key,
 	status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
 	if(status != OK)
 	{
-		if(minibase_errors.error_index() == NO_SPACE)
+		if(status == DONE)
 			return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
 
 		return MINIBASE_FIRST_ERROR(BTLEAFPAGE,LEAFINSERTFAIL);
@@ -235,7 +235,7 @@ Status BTLeafPage::get_first_sp (RID& rid,
 	// get the first record by calling the HFPage function;
 	Status status;
 	HFPage* currPage;
-	status = MINIBASE_BM->pin(spPageNo, (Page*&)currPage);
+	status = MINIBASE_BM->pinPage(spPageNo, (Page*&)currPage);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
@@ -275,13 +275,13 @@ Status BTLeafPage::get_first_sp (RID& rid,
 
 Status BTLeafPage::get_next_sp (RID& rid,
                              void *key,
-                             RID & dataRid
-							 PageId spPageNo)
+                             RID & dataRid,
+			     PageId spPageNo)
 {
 	// get the next record by calling the HFPage function;
         Status status;
 		HFPage* currPage;
-		status = MINIBASE_BM->pin(spPageNo, (Page*&)currPage);
+		status = MINIBASE_BM->pinPage(spPageNo, (Page*&)currPage);
 		if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 

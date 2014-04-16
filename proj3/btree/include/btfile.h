@@ -39,7 +39,7 @@ enum btErrCodesa{
 	DELETE_ERROR,
 	REC_NOT_FOUND,
 	GET_PAGE_NO_ERROR,
-	
+	NO_LEAF_NODE,
 };
 
 class BTreeFile: public IndexFile
@@ -105,6 +105,8 @@ class BTreeFile: public IndexFile
 	 //--- uPage: upperPage obj, used for redistribution ---
 	 //--- ls: left sibling 
 	Status insertHelper(const void* key, const RID rid, PageId pageNo,void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage*& uPage);
+
+	Status deleteHelper(const void *key, const RID rid, PageId pageNo);
 
 };
 

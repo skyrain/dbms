@@ -41,7 +41,7 @@ BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int
 			curRid.pageNo = INVALID_PAGE;
 	}else{	
 		// start from the given low key.
-		status = fromLowPage(root);
+		status = fromLowPage(rootPageId);
 		if(status != OK)
 			curRid.pageNo = INVALID_PAGE;	
 	}
@@ -70,7 +70,7 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 	lPage = (BTLeafPage *)curPage;
 	
 	// no page, scan finish.
-	if(curRid.Pageno == INVALID_PAGE)
+	if(curRid.pageNo == INVALID_PAGE)
 		return DONE;
 	
 	// if this is the first rec in the page, get the first record.
@@ -78,7 +78,7 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 	{
 		status = lPage->get_first(curRid, keyptr, rid);
 		if(status != OK)
-			return MINIBASE_FIRST_ERROR(BTREE, SCAN_ERROR);
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
 	}else{
 		// recursively call get next until return status is DONE.
 		status = lPage->get_next(curRid, keyptr, rid);
@@ -98,20 +98,20 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
                                 	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 	                }
 	
-			return get_next(rid, ketptr);
+			return get_next(rid, keyptr);
 		}
 	}		
 
 	// determine whether the key beyond the hi_key key at last.
 	int res = 0;
-	res = KeyCompare(key, hi_key, keyType);
+	res = keyCompare(keyptr, hi_key, keyType);
 	// if hi_key is not max and there is key larger than hikey, then return DONE to finish the scan.
 	if(hi_key != NULL && res > 0){
-		status = MINIBASE_BM->unpinPage(curRid, pageNo);
+		status = MINIBASE_BM->unpinPage(curRid.pageNo);
 		if(status != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-		curRid.pageNo == INVALID_PAGE;
-		return DONE
+		curRid.pageNo = INVALID_PAGE;
+		return DONE;
 	}
 
 	return OK;
@@ -123,7 +123,7 @@ Status BTreeFileScan::delete_current()
 	Status status;
 	BTLeafPage *lPage = NULL;
 	lPage = (BTLeafPage *)curPage;
-	PageId prevPage = INVALID_PAGE;
+	PageId prevPageId = INVALID_PAGE;
 	int numofRec = 0;
 	
 	// curDeleted should be false now, and then set it true.
@@ -134,7 +134,7 @@ Status BTreeFileScan::delete_current()
 	// call deleteRecord to delete
 	status = lPage->deleteRecord(curRid);
 	if(status != OK)
-		return MINIBASE_FRIST_ERROR(BTREE, DELETE_TREE_ERROR);
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
 	
 	// if No record on the current page, move to the next page.
 	numofRec = lPage->numberOfRecords();
@@ -235,7 +235,8 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_PIN_PAGE);
 	
 	// if the type is still the index page, the recursively call this funciton to get to the leaf.
-        tmpSPage = (SortedPage *)tmpPage;
+        short type;
+	tmpSPage = (SortedPage *)tmpPage;
         tmpIPage = (BTIndexPage *)tmpPage;
         type = tmpSPage->get_type();
 	if(type == INDEX){
@@ -258,11 +259,11 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		tmpLPage = (BTLeafPage *)tmpPage;
 		status = tmpLPage->get_first(curRid, &dataEntry.key, tmpRid);
 		if(status != OK)	
-			return MINIBASE_FIRST_ERROR(BTREE, SCAN_ERROR);
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
 		
 		// Calling KeyCompare until find the start point to scan.
 		int res = 0;
-		res = KeyCompare(&dataEntry.key, lo_key, keyType);
+		res = keyCompare(&dataEntry.key, lo_key, keyType);
 		while(res < 0){
 			status = tmpLPage->get_next(curRid, &dataEntry.key, tmpRid);
 			if(status != OK){
@@ -282,7 +283,7 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
                                 	        	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
                         		}
 				}else
-						return MINIBASE_FIRST_ERROR(BTREE, SCAN_ERROR);
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
 			}
 		}
 		curRid.slotNo --;

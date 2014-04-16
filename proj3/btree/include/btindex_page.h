@@ -10,6 +10,7 @@
 #include "page.h"
 #include "sorted_page.h"
 #include "bt.h"
+#include "buf.h"
 
 // Define your error code for index page here
 // enum btIndexErrCodes  {...}

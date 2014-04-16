@@ -184,7 +184,7 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
 		currPageId = nextPageId;
 		//minibase_errors.clear_errors();
 	}else{
-		return MINIBASE_CHAIN_ERROR(HEAPFILE, satus);
+		return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 	}
     }   
    
