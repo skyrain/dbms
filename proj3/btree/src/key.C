@@ -123,7 +123,7 @@ void get_key_data(void *targetkey, Datatype *targetdata,
 	
 	// sava the data into targetdata
 	if(targetdata != NULL)
-		memcpy(targetkey, psource + key_len, data_len);
+		memcpy(targetdata, psource + key_len, data_len);
 }
 
 /*

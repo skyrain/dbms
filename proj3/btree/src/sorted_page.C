@@ -218,7 +218,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 				int* keyMem = (int*)calloc(1, sizeof(int));
 				memcpy(keyMem, tmpData, sizeof(int));
 
-				int tmpKey = (int)*keyMem;
+				int tmpKey = *keyMem;
 				free(keyMem);
 				free(tmpData);
 				//--- compare walker key and new key ---

@@ -499,6 +499,7 @@ int HFPage::cleanSlot(RID rid)
 	if (rid.slotNo == 0)
 	{
 		recLen = this->slot[0].length;
+		this->slot[0].offset = INVALID_SLOT;
 		this->slot[0].length = EMPTY_SLOT;
 		return recLen;
 	}
@@ -506,6 +507,7 @@ int HFPage::cleanSlot(RID rid)
 	{
 		slot_t *tmpSlot = (slot_t *)&(this->data[(rid.slotNo - 1) * sizeof(slot_t)]);
 		recLen = tmpSlot->length;
+		tmpSlot->offset = INVALID_SLOT;
 		tmpSlot->length = EMPTY_SLOT;
 		return recLen;
 	}

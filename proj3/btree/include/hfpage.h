@@ -43,6 +43,8 @@ class HFPage {
     PageId    nextPage;    // forward pointer to data page
     PageId    curPage;     // page number of this page
 
+	//--- for debug
+public:
     slot_t    slot[1];     // first element of slot array.
 
     char      data[MAX_SPACE - DPFIXED]; 
