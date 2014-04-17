@@ -147,7 +147,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 				int* keyMem = (int*)calloc(1, sizeof(int));
 				memcpy(keyMem, tmpData, sizeof(int));
 
-				int tmpKey = (int)*keyMem;
+				int tmpKey = *keyMem;
 				free(keyMem);
 				free(tmpData);
 				//--- compare walker key and new key ---
@@ -166,7 +166,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 					slot_t* tmpSlot = (slot_t* )calloc(1, sizeof(slot_t));
 					memcpy(tmpSlot, &slot[i], sizeof(slot_t));
 					memcpy(&slot[i], &slot[newSlotNo], sizeof(slot_t));
-					memcpy(&slot[newSlotNo], &tmpSlot, sizeof(slot_t));
+					memcpy(&slot[newSlotNo], tmpSlot, sizeof(slot_t));
 					free(tmpSlot);
 					//--- update slot[newSlotNo]'s key ---
 					key.intkey = tmpKey;
@@ -237,7 +237,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 					slot_t* tmpSlot = (slot_t* )calloc(1, sizeof(slot_t));
 					memcpy(tmpSlot, &slot[j], sizeof(slot_t));
 					memcpy(&slot[j], &slot[newSlotNo], sizeof(slot_t));
-					memcpy(&slot[newSlotNo], &tmpSlot, sizeof(slot_t));
+					memcpy(&slot[newSlotNo], tmpSlot, sizeof(slot_t));
 					free(tmpSlot);
 					//--- update slot[newSlotNo]'s key ---
 					key.intkey = tmpKey;
