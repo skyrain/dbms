@@ -74,7 +74,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 		int* keyMem = (int *)calloc(1, sizeof(int));
 		memcpy(keyMem, recPtr, sizeof(int));
 		
-		key.intkey = (int)*keyMem;
+		key.intkey = *keyMem;
 		free(keyMem);
 		isStrKey = false;
 	}
