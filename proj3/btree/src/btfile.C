@@ -1140,7 +1140,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 
 					//--- 2. skip front entries ---
 					//--- ?? right middle --- 
-					for(int i = 0; i < (totalEntry + 1) / 2; i++)
+					// weng totalEntry - 1
+					for(int i = 0; i < totalEntry / 2; i++)
 					{
 						status = ((BTLeafPage*)currPage)->get_next(tRid,
 								&tKey, tDataRid);

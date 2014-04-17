@@ -107,7 +107,7 @@ class BTreeFile: public IndexFile
 	Status insertHelper(const void* key, const RID rid, PageId pageNo,void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage*& uPage);
 
 	Status deleteHelper(const void *key, const RID rid, PageId pageNo);
-
+	
 };
 
 #endif

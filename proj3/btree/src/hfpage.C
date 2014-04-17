@@ -290,8 +290,9 @@ Status HFPage::nextRecord (RID curRid, RID& nextRid)
 	//--- curRid is not valid input ---
 	if(curRid.pageNo < 0 || curRid.slotNo < 0)
 		return FAIL;
+	// weng return fail
 	if(curRid.slotNo >= this->slotCnt)
-		return FAIL;
+		return DONE;
 
 	bool noNext = true;
 	for(int i = curRid.slotNo + 1; i < this->slotCnt; i++)
