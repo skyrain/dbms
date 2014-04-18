@@ -21,7 +21,7 @@ LFLAGS= -L${MINIBASE}/lib -ldb -lm
 
 SRCS =  main.C btree_driver.C btfile.C btindex_page.C \
 	btleaf_page.C buf.C new_error.C key.C \
-	btreefilescan.C system_defs.C page.C sorted_page.C hfpage.C heapfile.C scan.C
+	btreefilescan.C system_defs.C page.C sorted_page.C hfpage.C
 
 OBJS = $(SRCS:.C=.o)
 

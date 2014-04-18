@@ -4,22 +4,20 @@
 
 	- Overall description of your algorithms and data structures
 
-	// * Inserts a key, rid value into the leaf node. This is
-	// * accomplished by a call to SortedPage::insertRecord()
-	// * The function also sets up the recPtr field for the call
-	// * to SortedPage::insertRecord()
+	// Inserts a key, rid value into the leaf node. This is
+	// accomplished by a call to SortedPage::insertRecord()
+	// The function also sets up the recPtr field for the call
+	// to SortedPage::insertRecord()
 	Status insertRec(const void *key, AttrType key_type, RID dataRid, RID& rid);
 
-	/*
-	 * This function performs a binary search to look for the
+
+	* This function performs a binary search to look for the
  	* rid of the data record. (dataRid contains the RID of
  	* the DATA record, NOT the rid of the data entry!)
- 	*/
 	Status BTLeafPage::get_data_rid(void *key,
                                 AttrType key_type,
                                 RID & dataRid)
 
-	/* 
  	* These functions provide an
 	* iterator interface to the records on a specific BTLeafPage.
  	* get_first returns the first key, RID from the page,
@@ -27,7 +25,6 @@
 	* These functions make calls to RecordPage::get_first() and
  	* RecordPage::get_next(), and break the flat record into its
  	* two components: namely, the key and datarid. 
- 	*/
 	Status get_first(RID& rid, void *key, RID & dataRid);
    	Status get_next (RID& rid, void *key, RID & dataRid);
 	Status get_first_sp(RID& rid, void *key, RID & dataRid, PageId spPageNo);
