@@ -1,9 +1,63 @@
 /*
- * btindex_page.C - implementation of class BTIndexPage
- *
- * Johannes Gehrke & Gideon Glass  951016  CS564  UW-Madison
- * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
- */
+	btindex_page.C
+	Define the B tree index page and all the operations on a index page.
+
+	- Overall description of your algorithms and data structures
+	
+	// ------------------- insertKey ------------------------
+	// Inserts a <key, page pointer> value into the index node.
+	// This is accomplished by a call to SortedPage::insertRecord()
+	// This function sets up the recPtr field for the call to
+	// SortedPage::insertRecord()
+	Status BTIndexPage::insertKey (const void *key, AttrType key_type, PageId pageNo, RID& rid)
+
+	// ------------------- deletekey ------------------------
+	// Delete an index entry with a key, only deal with the push up in index.
+	Status BTIndexPage::deleteKey (const void *key, AttrType key_type, RID& curRid)
+
+	// ------------------ get_page_no -----------------------
+	// This function encapsulates the search routine to search a
+	// BTIndexPage. It uses the standard search routine as
+	// described in the textbook, and returns the page_no of the
+	// child to be searched next.
+	Status BTIndexPage::get_page_no(const void *key, AttrType key_type, PageId & pageNo)
+
+	// calls to HFPage::firstRecord() to get the first key pair    
+	Status BTIndexPage::get_first(RID& rid, void *key,PageId & pageNo)
+
+	// calls to HFPage::nextRecord() to get the next key pair
+	Status get_next (RID& rid, void *key, PageId & pageNo);
+
+	// ------------------- Iterators ------------------------
+	// The two functions get_first and get_next provide an
+	// iterator interface to the records on a specific BTIndexPage.
+	// get_first returns the first <key, pageNo> pair from the page,
+	// while get_next returns the next pair on the page.
+	// These functions make calls to HFPage::firstRecord() and
+	// HFPage::nextRecord(), and then split the flat record into its
+	// two components: namely, the key and pageNo.
+	// Should return NOMORERECS when there are no more pairs.
+ 	Status get_first_sp(RID& rid, void *key, PageId & pageNo, PageId spPageNo);
+	Status get_next_sp (RID& rid, void *key, PageId & pageNo, PageId spPageNo);
+
+
+	// ------------------- Left Link ------------------------
+	// You will recall that index pages have a left-most
+	// pointer that is followed whenever the search key value
+	// is less than the least key value in the index node. The
+	// previous page pointer is used to implement the left link.
+	PageId getLeftLink(void) { return getPrevPage(); }
+	void   setLeftLink(PageId left) { setPrevPage(left); }
+	
+	- Anything unusual in your implementation
+
+	Design and implementation details are the same as what descriped in the course website.
+
+	- What functionalities not supported well
+
+	All functionalities are implemented, but not work properly so far, we will fix that soon.
+
+*/
 
 #include "btindex_page.h"
 

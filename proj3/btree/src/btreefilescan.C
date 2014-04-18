@@ -1,9 +1,53 @@
 /*
- * btreefilescan.C - function members of class BTreeFileScan
- *
- * Spring 14 CS560 Database Systems Implementation
- * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 
- */
+	btreefilescan.C
+	Define all the operations on a B tree file scan.
+
+	- Overall description of your algorithms and data structures
+
+	// Constructor of BTreeFileScan, input will be the headerPage infor, and hikey and lokey.
+	BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int keysize, PageId rootid)
+
+	// Deconstructor of BTreeFileScan.
+	BTreeFileScan::~BTreeFileScan()
+
+	// get the next record
+	Status BTreeFileScan::get_next(RID & rid, void* keyptr)
+
+	// delete the record currently scanned
+	Status BTreeFileScan::delete_current()
+
+	// size of the key
+	int BTreeFileScan::keysize() 
+
+
+	// Supporting function for the constructor, it will find the left most node of the tree.
+	// Dealing the following cases:
+   	//      (1) lo_key = NULL, hi_key = NULL
+   	//              scan the whole index
+   	//      (2) lo_key = NULL, hi_key!= NULL
+  	//              range scan from min to the hi_key
+	Status BTreeFileScan::fromLeftMostPage(PageId pageid)
+		
+
+	// Supporting function for the constructor, it will find the low key node of the tree.
+	// Dealing the following cases:
+   	//      (3) lo_key!= NULL, hi_key = NULL
+   	//              range scan from the lo_key to max
+   	//      (4) lo_key!= NULL, hi_key!= NULL, lo_key = hi_key
+   	//              exact match ( might not unique)
+   	//      (5) lo_key!= NULL, hi_key!= NULL, lo_key < hi_key
+   	//              range scan from lo_key to hi_key
+	Status BTreeFileScan::fromLowPage(PageId pageid)
+
+	- Anything unusual in your implementation
+
+	Design and implementation details are the same as what descriped in the course website.
+
+	- What functionalities not supported well
+
+	All functionalities are implemented, but not work properly so far, we will fix that soon.
+
+*/
 
 #include "minirel.h"
 #include "buf.h"
@@ -104,9 +148,11 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 
 	// determine whether the key beyond the hi_key key at last.
 	int res = 0;
-	res = keyCompare(keyptr, hi_key, keyType);
+	if(hi_key != NULL){
+		res = keyCompare(keyptr, hi_key, keyType);
+	}
 	// if hi_key is not max and there is key larger than hikey, then return DONE to finish the scan.
-	if(hi_key != NULL && res > 0){
+	if(res > 0){
 		status = MINIBASE_BM->unpinPage(curRid.pageNo);
 		if(status != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);

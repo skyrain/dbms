@@ -1,9 +1,75 @@
+/*****************************************************************************/
+/************************ Implementation of B+ Tree ***************************/
+/*****************************************************************************/
+
 /*
- * btfile.C - function members of class BTreeFile 
- * 
- * Johannes Gehrke & Gideon Glass  951022  CS564  UW-Madison
- * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
- */
+	btfile.C
+	Define the B tree file and all the operations.
+
+	- Overall description of your algorithms and data structures
+	// BTreeFile constructor, if B+ tree with given filename exist already, open it.
+	BTreeFile(Status& status, const char *filename); 
+
+	// BTreeFile constructor, if B+ tree with given filename doen not exit, create it.
+	BTreeFile(Status& status, const char *filename, const AttrType keytype, const int keysize);
+	
+	// Decontructor of Btree file, unpin the header page delete the filename;	
+	BTreeFile::~BTreeFile ()
+
+	// Delete the whole btree file from the database, unpin each page from the index recursively, by calling get_first and get_next. Delete the file at last.
+	Status BTreeFile::destroyFile ()
+
+	// Supporting function for destroyFile(), recursively delete the subtree of input node
+	Status BTreeFile::deleteSubTree(PageId pageId)
+	
+	// Supporting function for insert.
+	//--- key: index entry key value to be inserted to upper layer ---
+	//--- rid: the intended inserted rid for record ---
+	//--- pageNo: current page's page id ---
+	//--- upPageNo: copy up or push up PageId, points to new generated page ---
+	//--- split: flag whether insert new index entry to upper layer ---
+	//--- if split == false, key could be just initialize(not used by upper layer) ---
+	//--- uPage: upperPage obj, used for redistribution ---
+	//--- ls: left sibling
+	Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo, void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage*& uPage)
+
+	// Supporting function for Delete(), recursively find the leaf node and delete the leaf node.
+	// Only implemented delete in the leaf node without redistribution when the record drop below the half.
+	Status deleteHelper(const void *key, const RID rid, PageId pageNo);
+      
+	// insert <key,rid> into appropriate leaf page
+	Status insert(const void *key, const RID rid);
+	
+	// delete leaf entry <key,rid> from the appropriate leaf
+	Status Delete(const void *key, const RID rid);
+    
+	// create a scan with given keys, dealing with the following cases.
+	// It will call the btreefilescan to do the job recursively.
+    	// Cases:
+   	//      (1) lo_key = NULL, hi_key = NULL
+   	//              scan the whole index
+  	//      (2) lo_key = NULL, hi_key!= NULL
+   	//              range scan from min to the hi_key
+   	//      (3) lo_key!= NULL, hi_key = NULL
+   	//              range scan from the lo_key to max
+    	//      (4) lo_key!= NULL, hi_key!= NULL, lo_key = hi_key
+    	//              exact match ( might not unique)
+    	//      (5) lo_key!= NULL, hi_key!= NULL, lo_key < hi_key
+    	//              range scan from lo_key to hi_key 
+	IndexFileScan *new_scan(const void *lo_key = NULL, const void *hi_key = NULL);
+		
+	// It will return the key size of the key
+	int keysize();
+
+	- Anything unusual in your implementation
+
+	Design and implementation details are the same as what descriped in the course website.
+
+	- What functionalities not supported well
+
+	All functionalities are implemented, but not work properly so far, we will fix that soon.
+
+*/
 
 #include "minirel.h"
 #include "buf.h"

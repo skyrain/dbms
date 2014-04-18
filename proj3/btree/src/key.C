@@ -1,10 +1,44 @@
 /*
- * key.C - implementation of <key,data> abstraction for BT*Page and 
- *         BTreeFile code.
- *
- * Gideon Glass & Johannes Gehrke  951016  CS564  UW-Madison
- * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
- */
+	key.C
+	Define all the operations on a key.
+
+	- Overall description of your algorithms and data structures
+	
+ 	* keyCompare compares two keys, key1 and key2
+ 	* Return values:
+ 	*   - key1  < key2 : negative
+ 	*   - key1 == key2 : 0
+ 	*   - key1  > key2 : positive
+	int keyCompare(const void *key1, const void *key2, AttrType t)
+
+ 	* make_entry: write a <key,data> pair to a blob of memory (*target) big
+	* enough to hold it.  Return length of data in the blob via *pentry_len.
+ 	* Ensures that <data> part begins at an offset which is an even 
+ 	* multiple of sizeof(PageNo) for alignment purposes.
+	void make_entry(KeyDataEntry *target,
+                AttrType key_type, const void *key,
+                nodetype ndtype, Datatype data,
+                int *pentry_len)
+
+	* get_key_data: unpack a <key,data> pair into pointers to respective parts.
+	* Needs a) memory chunk holding the pair (*psource) and, b) the length
+	* of the data chunk (to calculate data start of the <data> part).
+	void get_key_data(void *targetkey, Datatype *targetdata,
+                  KeyDataEntry *psource, int entry_len, nodetype ndtype)
+
+ 	* get_key_data_length: return (key+data) length in given key_type  
+	int get_key_data_length(const void *key, const AttrType key_type, 
+                        const nodetype ndtype)
+
+	- Anything unusual in your implementation
+
+	Design and implementation details are the same as what descriped in the course website.
+
+	- What functionalities not supported well
+
+	All functionalities are implemented, but not work properly so far, we will fix that soon.
+
+*/
 
 #include <string.h>
 #include <assert.h>

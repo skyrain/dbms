@@ -1,9 +1,47 @@
 /*
- * btleaf_page.C - implementation of class BTLeafPage
- *
- * Johannes Gehrke & Gideon Glass  951016  CS564  UW-Madison
- * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
- */
+	btleaf_page.C
+	Define the B tree leaf page and all the operations on a leaf page.
+
+	- Overall description of your algorithms and data structures
+
+	// * Inserts a key, rid value into the leaf node. This is
+	// * accomplished by a call to SortedPage::insertRecord()
+	// * The function also sets up the recPtr field for the call
+	// * to SortedPage::insertRecord()
+	Status insertRec(const void *key, AttrType key_type, RID dataRid, RID& rid);
+
+	/*
+	 * This function performs a binary search to look for the
+ 	* rid of the data record. (dataRid contains the RID of
+ 	* the DATA record, NOT the rid of the data entry!)
+ 	*/
+	Status BTLeafPage::get_data_rid(void *key,
+                                AttrType key_type,
+                                RID & dataRid)
+
+	/* 
+ 	* These functions provide an
+	* iterator interface to the records on a specific BTLeafPage.
+ 	* get_first returns the first key, RID from the page,
+ 	* while get_next returns the next key on the page.
+	* These functions make calls to RecordPage::get_first() and
+ 	* RecordPage::get_next(), and break the flat record into its
+ 	* two components: namely, the key and datarid. 
+ 	*/
+	Status get_first(RID& rid, void *key, RID & dataRid);
+   	Status get_next (RID& rid, void *key, RID & dataRid);
+	Status get_first_sp(RID& rid, void *key, RID & dataRid, PageId spPageNo);
+  	Status get_next_sp (RID& rid, void *key, RID & dataRid, PageId spPageNo);
+
+	- Anything unusual in your implementation
+
+	Design and implementation details are the same as what descriped in the course website.
+
+	- What functionalities not supported well
+
+	All functionalities are implemented, but not work properly so far, we will fix that soon.
+
+*/
 
 #include "btleaf_page.h"
 
