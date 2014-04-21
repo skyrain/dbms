@@ -99,15 +99,22 @@ class BTreeFile: public IndexFile
 	//--- key: index entry key value to be inserted to upper layer ---
 	//--- rid: the intended inserted rid for record ---
 	//--- pageNo: current page's page id ---
-	//--- upPageNo: copy up or push up PageId, points to new generated page ---
+	//--- upPageNo: copy up or push up PageId,----
+	//--- points to new generated page ---
 	//--- split: flag whether insert new index entry to upper layer ---
 	//--- if split == false, key could be just initialize(not used by upper layer) ---
 	 //--- uPage: upperPage obj, used for redistribution ---
 	 //--- ls: left sibling 
-	Status insertHelper(const void* key, const RID rid, PageId pageNo,void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage*& uPage);
+	Status insertHelper(const void* key, const RID rid, PageId pageNo,void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage* uPage);
 
 	Status deleteHelper(const void *key, const RID rid, PageId pageNo);
-	
+
+	Status	indexRootSplit(PageId pageNo, const void *lowerKey, 
+			const PageId lowerUpPageNo, HFPage* currPage);	
+
+
+
+
 };
 
 #endif
