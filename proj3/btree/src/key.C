@@ -109,12 +109,13 @@ void make_entry(KeyDataEntry *target,
 	data_len = *pentry_len - key_len;
 
 	// write a key into memory chunk of target.
-	if(key_type == attrInteger)
+	if(key_type == attrInteger){
 		memcpy(target, key, key_len);
-	else if(key_type == attrString)
+	}else if(key_type == attrString){
 		// memcpy ???
+		char *tmpkey = (char *)
 		strcpy((char *)target, (char *)key);
-	else //other type ???
+	}else //other type ???
 		cout << " KeyType unknown: " << key_type << endl;
 
 	// write data into memory chunk of targe
@@ -157,7 +158,7 @@ void get_key_data(void *targetkey, Datatype *targetdata,
 	
 	// sava the data into targetdata
 	if(targetdata != NULL)
-		memcpy(targetdata, psource + key_len, data_len);
+		memcpy(targetdata, ((char *)psource) + key_len, data_len);
 }
 
 /*

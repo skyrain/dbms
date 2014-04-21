@@ -52,6 +52,9 @@ private:
 			SORT_FAILED,
 			HEAPFILE_FAILED
 			};
+	
 };
+
+
 
 #endif

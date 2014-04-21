@@ -10,6 +10,8 @@ Status Scan::init(HeapFile *hf): get the heapfile name and first data page of th
 Status Scan::reset(): set all the parameters in the scanner to unused state.
 Status Scan::firstDataPage(): get the first dataPageId from the heapfile meta data, return OK if success, returon error code if not.
 Status Scan::nextDataPage(): get the next data page, return OK if success, return DONE if there isn't any data page
+Status Scan::mvNext(RID &rid): Move to the next record in a sequential scan. Also returns the RID of the (new) current record.
+Status Scan::position(RID rid): Position the scan cursor to the record with the given rid. Returns OK if successful, non-OK otherwise.
 
 - Anything unusual in your implementation
 Because it's sequencial scan, we use only one doubly linked list and it is faster than the directory structure.
@@ -162,3 +164,69 @@ Status Scan::nextDataPage()
 
     return OK;     
 }   
+
+// Move to the next record in a sequential scan.
+// Also returns the RID of the (new) current record.
+Status Scan::mvNext(RID &rid){
+	// if no data page. just return DONE. 
+	if(dataPage == NULL)
+		return DONE;
+	
+	// if there is data page, get the current record in that page.
+	nxtUserStatus =  dataPage->nextRecord(userRid, rid);
+	
+	if(nxtUserStatus == OK){
+		userRid = rid;
+		return OK;
+	}
+
+	Status status;
+	// if current datapage does not have a record, move to the next page.
+	status = nextDataPage();
+	if(status == OK)
+		rid = userRid;
+	else 
+		return status;
+
+	return OK;
+}
+
+// Position the scan cursor to the record with the given rid.
+// Returns OK if successful, non-OK otherwise.
+Status Scan::position(RID rid){
+	
+	// compare with the current scanning rid, if they are equal, we find it!
+	RID curRid;
+	curRid = userRid;
+	Status status;
+
+	if(curRid == rid)
+		return OK;
+	else{
+		// find the data page from the beginning.
+		reset();
+		status = firstDataPage();
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+		while(dataPageId != rid.pageNo){
+			status = nextDataPage();
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+		}		
+	}
+
+	// after the datapage has been found, then find the data record.
+	status = dataPage->firstRecord(userRid);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+	
+	curRid = userRid;
+	while(curRid != rid){
+		status = mvNext(curRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+	}
+	
+	return OK;
+}
