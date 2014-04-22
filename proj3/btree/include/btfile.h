@@ -112,6 +112,15 @@ class BTreeFile: public IndexFile
 	Status	indexRootSplit(PageId pageNo, const void *lowerKey, 
 			const PageId lowerUpPageNo, HFPage* currPage);	
 
+	//--- input lRedi: true ---
+	Status indexLeftRedistribution(const void* lowerKey,
+			const PageId lowerUpPageNo, bool& lRedi, 
+			HFPage* currPage, HFPage* uPage);
+
+	//--- input rRedi: true ---
+	Status indexRightRedistribution(const void* lowerKey,
+			const PageId lowerUpPageNo, bool& rRedi, 
+			HFPage* currPage, HFPage* uPage);
 
 
 
