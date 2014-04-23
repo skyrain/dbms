@@ -122,7 +122,10 @@ class BTreeFile: public IndexFile
 			const PageId lowerUpPageNo, bool& rRedi, 
 			HFPage* currPage, HFPage* uPage);
 
-
+	Status indexSplit(const void* lowerKey,
+			const PageId lowerUpPageNo,
+			void* l_Key, PageId& l_UpPageNo, bool& l_split,
+			HFPage* currPage, HFPage* uPage)
 
 };
 
