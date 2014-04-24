@@ -305,6 +305,7 @@ Status BTreeFile::deleteSubTree(PageId pageId){
 Status BTreeFile::indexRootSplit(PageId pageNo,
 		const Keytype lowerKey, PageId lowerUpPageNo, HFPage* currPage)
 {
+	Status status;
 	//--- split ---
 	//--- create a new root page ---
 	// allocate a root page to the header page.
@@ -443,6 +444,7 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 	((BTIndexPage*)newPage)->setLeftLink(tPageNo);
 
 	//--- 6.2 delete ---
+	RID insertRid;
 	status = ((BTIndexPage*)newPage)->deleteKey(&tKey, headerPage->keyType, insertRid);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, status);
@@ -466,18 +468,18 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 
 }
 
-Status BTreeFile::indexLeftRedistribution(const Keytype lowerKey,
+Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 		const PageId lowerUpPageNo, bool& lRedi, HFPage* currPage, HFPage* uPage)
 {
 	//--- 1.1 retrieve left sibling ---
 	RID tmpRid;
 	Keytype tmpKey;
 	PageId tmpPageNo;
+	Status status;
 	status = ((BTIndexPage*)uPage)->get_first(tmpRid, &tmpKey, tmpPageNo);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-	bool lsIsLeftLink = false;
 	//--- if lowerkey < least key in uPage, no left sibling ---
 	if(keyCompare(&lowerKey, &tmpKey, headerPage->keyType) < 0)
 	{
@@ -500,7 +502,6 @@ Status BTreeFile::indexLeftRedistribution(const Keytype lowerKey,
 		if(status == NOMORERECS)
 		{
 			lsibling = ((BTIndexPage*)uPage)->getLeftLink();
-			lsIsLeftLink = true;
 			lKey = tmpKey;
 		}
 		else if(status != OK)
@@ -521,7 +522,6 @@ Status BTreeFile::indexLeftRedistribution(const Keytype lowerKey,
 			if(keyCompare(&lowerKey, &nextTmpKey, headerPage->keyType) < 0)
 			{ 
 				lsibling = ((BTIndexPage*)uPage)->getLeftLink();
-				lsIsLeftLink = true;
 				lKey = tmpKey;
 			}
 			else if(status == NOMORERECS) // if only two entries
@@ -772,13 +772,14 @@ Status BTreeFile::indexLeftRedistribution(const Keytype lowerKey,
 	return OK;
 }
 
-Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
+Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey,
 		const PageId lowerUpPageNo, bool& rRedi, 
 		HFPage* currPage, HFPage* uPage)
 {
 	RID tmpRid;
 	Keytype tmpKey;
-	PageId tmpPageNo;	
+	PageId tmpPageNo;
+	Status status;
 	status = ((BTIndexPage*)uPage)->get_first(tmpRid, &tmpKey, tmpPageNo);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -862,7 +863,7 @@ Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
 					if(status == NOMORERECS)
 					{
 						rRedi = false;
-						return OK:
+						return OK;
 					}
 				}
 			}
@@ -943,7 +944,7 @@ Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- b. roll back "insert endkey into right sibling" ---
-			status = ((BTIndexPage *)rs)->deletetKey(&endKey,
+			status = ((BTIndexPage *)rs)->deleteKey(&endKey,
 					headerPage->keyType, tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -972,7 +973,7 @@ Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- b. roll back "insert new entry in cur page" ---
-			status = ((BTIndexPage *)currPage)->deletetKey(&lowerKey,
+			status = ((BTIndexPage *)currPage)->deleteKey(&lowerKey,
 					headerPage->keyType, tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -984,7 +985,7 @@ Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- d. roll back "insert endkey into right sibling" ---
-			status = ((BTIndexPage *)rs)->deletetKey(&endKey,
+			status = ((BTIndexPage *)rs)->deleteKey(&endKey,
 					headerPage->keyType, tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1046,7 +1047,7 @@ Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- b. roll back "insert lowerkey into right sibling" ---
-			status = ((BTIndexPage *)rs)->deletetKey(&lowerKey,
+			status = ((BTIndexPage *)rs)->deleteKey(&lowerKey,
 					headerPage->keyType, tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1069,11 +1070,12 @@ Status BTreeFile::indexRightRedistribution(const Keytype lowerKey,
 	} 
 } 
 
-Status BTreeFile::indexSplit(const Keytype lowerKey,
+Status BTreeFile::indexSplit(PageId pageNo, const Keytype lowerKey,
 		const PageId lowerUpPageNo, 
 		void* l_Key, PageId& l_UpPageNo, bool& l_split,
 		HFPage* currPage, HFPage* uPage)
 {
+	Status status;
 	//--- mark split = true ---
 	l_split = true;
 
@@ -1214,6 +1216,7 @@ Status BTreeFile::indexSplit(const Keytype lowerKey,
 Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 		const RID rid, HFPage* currPage)
 {
+	Status status;
 	//--- split ---
 	//--- create a new root page ---
 	// allocate a root page to the header page.
@@ -1365,8 +1368,8 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 	((BTIndexPage*)rootPage)->setLeftLink(pageNo);
 
 	//--- 7. set leaf page as doubly link list
-	currPage->setNextPage(newPageId);
-	newPage->setPrevPage(pageNo);
+	((HFPage*)currPage)->setNextPage(newPageId);
+	((HFPage*)newPage)->setPrevPage(pageNo);
 
 	//---  unpin rootpage and new page & cur page ---
 	status = MINIBASE_BM->unpinPage(rootPageId, true);
@@ -1382,9 +1385,10 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 	return OK;
 }
 
-Status BTReeFile::leafLeftRedistribution(const void* key, 
+Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key, 
 		const RID rid, bool& lRedi, HFPage* currPage, HFPage* uPage)
 {
+	Status status;
 	//--- 1.1 retrieve left sibling ---
 	RID tmpRid;
 	Keytype tmpKey;
@@ -1393,7 +1397,6 @@ Status BTReeFile::leafLeftRedistribution(const void* key,
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-	bool lsIsLeftLink = false;
 	//--- if key < least key in uPage, no left sibling ---
 	if(keyCompare(key, &tmpKey, headerPage->keyType) < 0)
 	{
@@ -1415,7 +1418,6 @@ Status BTReeFile::leafLeftRedistribution(const void* key,
 		if(status == NOMORERECS)
 		{
 			lsibling = ((BTIndexPage*)uPage)->getLeftLink();
-			lsIsLeftLink = true;
 			lKey = tmpKey;
 			//deLKey = false;
 		}
@@ -1437,7 +1439,6 @@ Status BTReeFile::leafLeftRedistribution(const void* key,
 			if(keyCompare(key, &nextTmpKey, headerPage->keyType) < 0)
 			{ 
 				lsibling = ((BTIndexPage*)uPage)->getLeftLink();
-				lsIsLeftLink = true;
 				lKey = tmpKey;
 			}
 			else if(status == NOMORERECS) // if only two entries
@@ -1622,7 +1623,7 @@ Status BTReeFile::leafLeftRedistribution(const void* key,
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 				//--- b. roll back delete least key in currPage ---
-				status = ((BTIndexPage *)currPage)->insertRec(&tKey,
+				status = ((BTLeafPage *)currPage)->insertRec(&tKey,
 						headerPage->keyType, tDataRid, ttRid);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1688,9 +1689,10 @@ Status BTReeFile::leafLeftRedistribution(const void* key,
 	return OK;
 }
 
-Status BTreeFile::leafRightRedistribution(const void* key, 
-		const RID rid, bool& lRedi, HFPage* currPage, HFPage* uPage)
+Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key, 
+		const RID rid, bool& rRedi, HFPage* currPage, HFPage* uPage)
 {
+	Status status;
 	RID tmpRid;
 	Keytype tmpKey;
 	PageId tmpPageNo;
@@ -1698,7 +1700,7 @@ Status BTreeFile::leafRightRedistribution(const void* key,
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-	RID tmpDataRid;
+	//RID tmpDataRid;
 
 	//--- locate left sibling ---
 	PageId rsibling = tmpPageNo;
@@ -1889,7 +1891,7 @@ Status BTreeFile::leafRightRedistribution(const void* key,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- b. roll back "insert new entry in cur page" ---
-			status = ((SortedPage *)currPage)->deletetRecord(tRid);
+			status = ((SortedPage *)currPage)->deleteRecord(tRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -1900,7 +1902,7 @@ Status BTreeFile::leafRightRedistribution(const void* key,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- d. roll back "insert endkey into right sibling" ---
-			status = ((SortedPage *)rs)->deletetRecord(tmpRid);
+			status = ((SortedPage *)rs)->deleteRecord(tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -1984,10 +1986,11 @@ Status BTreeFile::leafRightRedistribution(const void* key,
 	}
 }
 
-Status BTreeFile::leafSplit(const void* key,
+Status BTreeFile::leafSplit(PageId pageNo, const void* key,
 		const RID rid, void* l_Key, PageId& l_UpPageNo, bool& l_split,
 		HFPage* currPage, HFPage* uPage)
 {
+	Status status;
 	//--- mark split = true ---
 	l_split = true;
 
@@ -2112,10 +2115,10 @@ Status BTreeFile::leafSplit(const void* key,
 	l_UpPageNo = newPageId;
 
 	//--- 6. set leaf page as doubly link list ---
-	newPage->setNextPage(currPage->getNextPage());
-	PageId newPageNextId = currPage->getNextPage();
-	currPage->setNextPage(newPageId);
-	newPage->setPrevPage(pageNo);
+	((HFPage*)newPage)->setNextPage(currPage->getNextPage());
+	PageId newPageNextId = ((HFPage*)currPage)->getNextPage();
+	((HFPage*)currPage)->setNextPage(newPageId);
+	((HFPage*)newPage)->setPrevPage(pageNo);
 	//--- 6.1 set new page next's prevPage as newPageId ---
     HFPage* newPageNext;
 	status = MINIBASE_BM->pinPage(newPageNextId, (Page*&)newPageNext);
@@ -2212,6 +2215,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
 
+					return OK;
+
 				}//--- if currpage is root page
 
 				//--- if pageNo page is not root page ---
@@ -2222,8 +2227,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				bool lRedi = true;
 				bool rRedi = true;
 
-				status = indexLeftRedistribution(lowerKey, lowerUpPageNo, 
-						lRedi, currPage, uPage);
+				status = indexLeftRedistribution(pageNo, lowerKey, 
+						lowerUpPageNo, lRedi, currPage, uPage);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -2231,8 +2236,8 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				//--- add least key into left sibling ---
 				if(!lRedi)
 				{
-					status = indexRightRedistribution(lowerKey, lowerUpPageNo, 
-							rRedi, currPage, uPage);
+					status = indexRightRedistribution(pageNo, lowerKey, 
+							lowerUpPageNo, rRedi, currPage, uPage);
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
 				}
@@ -2241,7 +2246,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				//---construct key push up ---
 				if(!lRedi && !rRedi)
 				{
-					status = indexSplit(lowerKey, lowerUpPageNo,
+					status = indexSplit(pageNo, lowerKey, lowerUpPageNo,
 							l_Key, l_UpPageNo, l_split,
 							currPage, uPage);
 					if(status != OK)
@@ -2280,51 +2285,48 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				status = leafRootSplit(pageNo, key, rid, currPage);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
+			
+				return OK;
 			}
 
-				//--- if pageNo page is not root page ---
-				//--- try redistribution first ---
+			//--- if pageNo page is not root page ---
+			//--- try redistribution first ---
 
-				//--- 1. retrieve left sibling & try to redistribute---
-				//--- add least key into left sibling ---
-				bool lRedi = true;
-				bool rRedi = true;
+			//--- 1. retrieve left sibling & try to redistribute---
+			//--- add least key into left sibling ---
+			bool lRedi = true;
+			bool rRedi = true;
 
-				status = leafLeftRedistribution(key, rid, lRedi, currPage,
-						uPage);
+			status = leafLeftRedistribution(pageNo, key, rid, lRedi,
+					currPage, uPage);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- 2. retrieve right sibling & try to redistribute---
+			//--- add least key into left sibling ---
+			if(!lRedi)
+			{
+				status = leafRightRedistribution(pageNo, key, rid, rRedi,
+						currPage, uPage);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
+			}
 
-				//--- 2. retrieve right sibling & try to redistribute---
-				//--- add least key into left sibling ---
-				if(!lRedi)
-				{
-					status = leafRightRedistribution(key, rid, rRedi,
-							currPage, uPage);
-					if(status != OK)
-						return MINIBASE_CHAIN_ERROR(BTREE, status);
-				}
+			//--- 3. if both redistribution returns false, split & ---
+			//---construct key push up ---
+			if(!lRedi && !rRedi)
+			{
+				status = leafSplit(pageNo, key, rid, l_Key, 
+						l_UpPageNo, l_split, currPage, uPage);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+			}
 
-				//--- 3. if both redistribution returns false, split & ---
-				//---construct key push up ---
-				if(!lRedi && !rRedi)
-				{
-					status = leafSplit(key, rid, l_Key, l_UpPageNo, l_split,
-							currPage, uPage);
-					if(status != OK)
-						return MINIBASE_CHAIN_ERROR(BTREE, status);
-				}
-
-				return OK;
+			return OK;
 		}//--- currpage is leaf page
 		return status;
 	}
 }
-
-//*/ weng
-//??? unpin currpage, since lowersplit is false
-return OK;
-} //---? function
 
 Status BTreeFile::insert(const void *key, const RID rid) {
 	// put your code here

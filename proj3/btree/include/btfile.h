@@ -113,19 +113,19 @@ class BTreeFile: public IndexFile
 			const PageId lowerUpPageNo, HFPage* currPage);	
 
 	//--- input lRedi: true ---
-	Status indexLeftRedistribution(const Keytype lowerKey,
+	Status indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			const PageId lowerUpPageNo, bool& lRedi, 
 			HFPage* currPage, HFPage* uPage);
 
 	//--- input rRedi: true ---
-	Status indexRightRedistribution(const Keytype lowerKey,
+	Status indexRightRedistribution(PageId pageNo, const Keytype lowerKey,
 			const PageId lowerUpPageNo, bool& rRedi, 
 			HFPage* currPage, HFPage* uPage);
 
-	Status indexSplit(const Keytype lowerKey,
+	Status indexSplit(PageId pageNo, const Keytype lowerKey,
 			const PageId lowerUpPageNo,
 			void* l_Key, PageId& l_UpPageNo, bool& l_split,
-			HFPage* currPage, HFPage* uPage)
+			HFPage* currPage, HFPage* uPage);
 
 	//--- for leaf ---
 	//------------
@@ -133,19 +133,19 @@ class BTreeFile: public IndexFile
 			const RID rid, HFPage* currPage);	
 
 	//--- input lRedi: true ---
-	Status  leafLeftRedistribution(const void* key,
+	Status  leafLeftRedistribution(PageId pageNo, const void* key,
 			const RID rid, bool& lRedi, 
 			HFPage* currPage, HFPage* uPage);
 
 	//--- input rRedi: true ---
-	Status leafRightRedistribution(const void * key,
+	Status leafRightRedistribution(PageId pageNo, const void * key,
 			const RID rid, bool& rRedi, 
 			HFPage* currPage, HFPage* uPage);
 
-	Status leafSplit(const void* key,
+	Status leafSplit(PageId pageNo, const void* key,
 			const RID rid,
 			void* l_Key, PageId& l_UpPageNo, bool& l_split,
-			HFPage* currPage, HFPage* uPage)
+			HFPage* currPage, HFPage* uPage);
 
 };
 
