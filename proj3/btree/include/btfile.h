@@ -109,20 +109,20 @@ class BTreeFile: public IndexFile
 
 	Status deleteHelper(const void *key, const RID rid, PageId pageNo);
 
-	Status	indexRootSplit(PageId pageNo, const void *lowerKey, 
+	Status	indexRootSplit(PageId pageNo, const Keytype lowerKey, 
 			const PageId lowerUpPageNo, HFPage* currPage);	
 
 	//--- input lRedi: true ---
-	Status indexLeftRedistribution(const void* lowerKey,
+	Status indexLeftRedistribution(const Keytype lowerKey,
 			const PageId lowerUpPageNo, bool& lRedi, 
 			HFPage* currPage, HFPage* uPage);
 
 	//--- input rRedi: true ---
-	Status indexRightRedistribution(const void* lowerKey,
+	Status indexRightRedistribution(const Keytype lowerKey,
 			const PageId lowerUpPageNo, bool& rRedi, 
 			HFPage* currPage, HFPage* uPage);
 
-	Status indexSplit(const void* lowerKey,
+	Status indexSplit(const Keytype lowerKey,
 			const PageId lowerUpPageNo,
 			void* l_Key, PageId& l_UpPageNo, bool& l_split,
 			HFPage* currPage, HFPage* uPage)
