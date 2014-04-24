@@ -2258,6 +2258,15 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 		RID insertRid;
 		status = ((BTLeafPage*)currPage)->insertRec(key, 
 				headerPage->keyType, rid, insertRid);
+		
+		if(status == OK)
+		{
+			//--- unpin curr page ---
+			status = MINIBASE_BM->unpinPage(pageNo, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+			return OK;
+		}
 		//--- if insertRec() returns NO_SPACE ---
 		//--- ?? can catch this NO_SPACE ---
 		if(status != OK && status != DONE)
@@ -2300,19 +2309,18 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				//---construct key push up ---
 				if(!lRedi && !rRedi)
 				{
-					//???
+					status = leafSplit(key, rid, l_Key, l_UpPageNo, l_split,
+							currPage, uPage);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
 				}
-
-				//---  unpin  new page ---
-				status = MINIBASE_BM->unpinPage(pageNo, true);
-				if(status != OK)
-					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 				return OK;
 		}//--- currpage is leaf page
-		return OK;
+		return status;
 	}
 }
+
 //*/ weng
 //??? unpin currpage, since lowersplit is false
 return OK;
