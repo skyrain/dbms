@@ -127,6 +127,26 @@ class BTreeFile: public IndexFile
 			void* l_Key, PageId& l_UpPageNo, bool& l_split,
 			HFPage* currPage, HFPage* uPage)
 
+	//--- for leaf ---
+	//------------
+	Status	leafRootSplit(PageId pageNo, const void *key, 
+			const RID rid, HFPage* currPage);	
+
+	//--- input lRedi: true ---
+	Status  leafLeftRedistribution(const void* key,
+			const RID rid, bool& lRedi, 
+			HFPage* currPage, HFPage* uPage);
+
+	//--- input rRedi: true ---
+	Status leafRightRedistribution(const void * key,
+			const RID rid, bool& rRedi, 
+			HFPage* currPage, HFPage* uPage);
+
+	Status leafSplit(const void* key,
+			const RID rid,
+			void* l_Key, PageId& l_UpPageNo, bool& l_split,
+			HFPage* currPage, HFPage* uPage)
+
 };
 
 #endif

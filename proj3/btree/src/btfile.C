@@ -303,7 +303,7 @@ Status BTreeFile::deleteSubTree(PageId pageId){
 
 
 Status BTreeFile::indexRootSplit(PageId pageNo,
-		const Keytype lowerKey, PageId lowerUpPageNo, HFPage*& currPage)
+		const Keytype lowerKey, PageId lowerUpPageNo, HFPage* currPage)
 {
 	//--- split ---
 	//--- create a new root page ---
@@ -431,7 +431,9 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 	//--- ?? can catch this NO_SPACE ---
 	if(status != OK && status != DONE)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-
+	
+	//???处理 status == DONE的情况
+	
 	//--- 6. delete step 5 mid entry from new page(push up) ---
 	status = ((BTIndexPage*)newPage)->get_first(tRid, &tKey, tPageNo);
 	if(status != OK)
@@ -1209,7 +1211,8 @@ Status BTreeFile::indexSplit(const Keytype lowerKey,
 	return OK;
 }
 
-Status BTreeFile::leafRootSplit()
+Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
+		const RID rid, HFPage* currPage)
 {
 	//--- split ---
 	//--- create a new root page ---
@@ -1230,6 +1233,7 @@ Status BTreeFile::leafRootSplit()
 	// Store the meta info into the header page.
 	headerPage->rootPageId = rootPageId;
 	// weng keytype is the same
+	//??? what the use to do it again
 	headerPage->keyType = keytype;
 	headerPage->keysize = keysize;
 	((BTIndexPage *)rootPage)->init(rootPageId);
@@ -1257,13 +1261,17 @@ Status BTreeFile::leafRootSplit()
 
 	int totalEntry = 0;
 	int lKeyPos = 0;
+	bool flag = true;
 
 	while(true)
 	{
 		// weng KeyCompare(&l_Key...
-		if(keyCompare(l_Key, &tKey, 
-					headerPage->keyType) < 0)
+		if(keyCompare(key, &tKey, 
+					headerPage->keyType) < 0 && flag)
+		{
 			lKeyPos = totalEntry;
+			flag = false;
+		}
 
 		status = ((BTLeafPage*)currPage)->get_next(tRid, &tKey,
 				tDataRid);
@@ -1323,7 +1331,7 @@ Status BTreeFile::leafRootSplit()
 	if(lKeyPos < (totalEntry + 1) / 2)
 	{
 		status = ((BTLeafPage*)currPage)->insertRec(key, 
-				headerPage->keyType, rid, insertRid);
+				headerPage->keyType, rid, tRid);
 		//--- if insertKey() returns NO_SPACE ---
 		//--- ?? can catch this NO_SPACE ---
 		if(status != OK && status != DONE)
@@ -1332,7 +1340,7 @@ Status BTreeFile::leafRootSplit()
 	else
 	{
 		status = ((BTLeafPage*)newPage)->insertRec(key, 
-				headerPage->keyType, rid, insertRid);
+				headerPage->keyType, rid, tRid);
 		//--- if insertKey() returns NO_SPACE ---
 		//--- ?? can catch this NO_SPACE ---
 		if(status != OK && status != DONE)
@@ -1345,14 +1353,20 @@ Status BTreeFile::leafRootSplit()
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 	status = ((BTIndexPage*)rootPage)->insertKey(&tKey, 
-			headerPage->keyType, newPageId, insertRid);
+			headerPage->keyType, newPageId, tRid);
 	//--- if insertKey() returns NO_SPACE ---
 	//--- ?? can catch this NO_SPACE ---
 	if(status != OK && status != DONE)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
+	
+	//???处理 status == DONE的情况
 
 	//---6. set root page left link ---
 	((BTIndexPage*)rootPage)->setLeftLink(pageNo);
+
+	//--- 7. set leaf page as doubly link list
+	currPage->setNextPage(newPageId);
+	newPage->setPrevPage(pageNo);
 
 	//---  unpin rootpage and new page & cur page ---
 	status = MINIBASE_BM->unpinPage(rootPageId, true);
@@ -1366,8 +1380,764 @@ Status BTreeFile::leafRootSplit()
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 	return OK;
-
 }
+
+Status BTReeFile::leafLeftRedistribution(const void* key, 
+		const RID rid, bool& lRedi, HFPage* currPage, HFPage* uPage)
+{
+	//--- 1.1 retrieve left sibling ---
+	RID tmpRid;
+	Keytype tmpKey;
+	PageId tmpPageNo;
+	status = ((BTIndexPage*)uPage)->get_first(tmpRid, &tmpKey, tmpPageNo);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+	bool lsIsLeftLink = false;
+	//--- if key < least key in uPage, no left sibling ---
+	if(keyCompare(key, &tmpKey, headerPage->keyType) < 0)
+	{
+		lRedi = false;
+		return OK;
+	}	
+	else //--- find left sibling  & try to do left redistribution ---
+	{
+		//--- locate left sibling ---
+		PageId lsibling = tmpPageNo;
+		Keytype lKey;
+
+		RID nextTmpRid = tmpRid;
+		Keytype nextTmpKey;
+		PageId nextTmpPageNo;
+		status =((BTIndexPage*)uPage)->get_next(nextTmpRid, &nextTmpKey, 
+				nextTmpPageNo);
+		//--- if only one index entry in parent node ---
+		if(status == NOMORERECS)
+		{
+			lsibling = ((BTIndexPage*)uPage)->getLeftLink();
+			lsIsLeftLink = true;
+			lKey = tmpKey;
+			//deLKey = false;
+		}
+		else if(status != OK)
+		{
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+		}
+		else
+		{
+			RID nnextTmpRid = nextTmpRid;
+			Keytype nnextTmpKey;
+			PageId nnextTmpPageNo;
+			status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey,
+					nnextTmpPageNo);
+			if(status != OK && status != NOMORERECS)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- if key is just bigger than first key ---
+			if(keyCompare(key, &nextTmpKey, headerPage->keyType) < 0)
+			{ 
+				lsibling = ((BTIndexPage*)uPage)->getLeftLink();
+				lsIsLeftLink = true;
+				lKey = tmpKey;
+			}
+			else if(status == NOMORERECS) // if only two entries
+			{
+				lsibling = tmpPageNo;
+				lKey = nextTmpKey;
+			}
+			else //-- more than 2 keys, and key bigger than second key -
+			{
+				while(true)
+				{
+					if(keyCompare(key, &nnextTmpKey, 
+								headerPage->keyType) < 0)
+					{
+						lsibling = tmpPageNo;
+						lKey = nextTmpKey;
+						break;
+					}
+
+					//--- update search ---
+					status =((BTIndexPage*)uPage)->get_next(tmpRid, &tmpKey, 
+							tmpPageNo);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					status = ((BTIndexPage*)uPage)->get_next(nextTmpRid, 
+							&nextTmpKey, nextTmpPageNo);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					status =((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey,
+							nnextTmpPageNo);
+					if(status != OK && status != NOMORERECS)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					//--- check if nnext reach end ---
+					if(status == NOMORERECS)
+					{
+						lsibling = tmpPageNo;
+						lKey = nextTmpKey;
+						break;
+					}
+				}
+			}
+		} // find left sibling page no 
+
+		//--- do left redistribution --- 
+
+		//--- pin left sibling ---
+		HFPage* ls;
+		status = MINIBASE_BM->pinPage(lsibling, (Page*& )ls);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		//--- compare key and currPage first entry ---
+		RID tRid;
+		Keytype tKey;
+		RID tDataRid;
+		status = ((BTLeafPage*)currPage)->get_first(tRid, &tKey, tDataRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- if key is least, insert it into left sibling --
+		if(keyCompare(key, &tKey, headerPage->keyType) < 0)
+		{
+			status = ((BTLeafPage*)ls)->insertRec(key, 
+					headerPage->keyType, tDataRid, tmpRid);
+			if(status != OK && status == DONE)
+			{
+				lRedi = false;	
+				return OK;
+			}
+			else if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- if left sibling has space --
+			//--- get end entry of left sibling & ---
+			//---inset into uPage to replace lKey --- 
+			//--- get end entry of left sibling ---
+			status = ((BTLeafPage*)ls)->get_first(tRid, 
+					&tKey, tDataRid);
+			if(status != OK && status != NOMORERECS)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- ?? should use memcpy ---
+			Keytype endKey = tKey;
+
+			while(true)
+			{
+				status = ((BTLeafPage*)ls)->get_next(tRid, &tKey, 
+						tDataRid);
+				if(status != OK && status != NOMORERECS)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				if(status == NOMORERECS)
+					break;
+
+				endKey = tKey;
+			}
+			//--- push up end entry into uPage --- 
+			status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
+					headerPage->keyType, tRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			status = ((BTIndexPage *)uPage)->insertKey(&endKey, 
+					headerPage->keyType, pageNo, tmpRid);
+			if(status != OK && status == DONE)
+			{
+				lRedi = false;
+				//--- reverse change ---
+				//--- a. reverse uPage ---
+				status = ((BTIndexPage *)uPage)->insertKey(&lKey,
+						headerPage->keyType, pageNo, tRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- b. reverse ls page ---
+				status = ((SortedPage *)ls)->deleteRecord(tmpRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				return OK;
+			}
+			else if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- unpin cur, left sbiling ---
+			status = MINIBASE_BM->unpinPage(pageNo, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+			status = MINIBASE_BM->unpinPage(lsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return OK;
+		}
+		else //--- insert pageNo least key into left sibling & uPage &
+			//--- delete itself ---
+			//--- insert key into pageNo page ---
+		{
+			//--- get least key in pageNo page ---
+			status = ((BTLeafPage*)currPage)->get_first(tRid, 
+					&tKey, tDataRid);
+			if(status != OK && status != NOMORERECS)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- insert least key into left sibling ---
+			status = ((BTLeafPage*)ls)->insertRec(&tKey, 
+					headerPage->keyType, tDataRid, tmpRid);
+			if(status != OK && status == DONE)
+			{
+				lRedi = false;
+				return OK;
+			}
+			else if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- delete least key in pageNo page ---
+			status = ((SortedPage*)currPage)->deleteRecord(tRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			RID ttRid;
+			//--- delete useless key in uPage ---
+			status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
+					headerPage->keyType, ttRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- insert least key into uPage ---
+			status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
+					headerPage->keyType, pageNo, ttRid);
+			if(status != OK && status == DONE)
+			{
+				lRedi  = false;
+				//--- roll back ---
+				//--- a. roll back delete useless key in uPage ---
+				status = ((BTIndexPage *)uPage)->insertKey(&lKey,
+						headerPage->keyType, pageNo, ttRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- b. roll back delete least key in currPage ---
+				status = ((BTIndexPage *)currPage)->insertRec(&tKey,
+						headerPage->keyType, tDataRid, ttRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- c. roll back insert least key in ls page ---
+				status = ((SortedPage*)ls)->deleteRecord(tmpRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				return OK;
+			}
+			else if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- insert new entry into pageNo page ---
+			status = ((BTLeafPage*)currPage)->insertRec(key, 
+					headerPage->keyType, rid, ttRid);
+			if(status != OK && status == DONE)
+			{
+				lRedi  = false;
+				//--- roll back ---
+
+				//--- a "insert least key into uPage "---
+				status = ((BTIndexPage *)uPage)->deleteKey(&tKey,
+						headerPage->keyType, ttRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- b. roll back delete useless key in uPage ---
+				status = ((BTIndexPage *)uPage)->insertKey(&lKey,
+						headerPage->keyType, pageNo, ttRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- c. roll back delete least key in currPage ---
+				status = ((BTLeafPage *)currPage)->insertRec(&tKey,
+						headerPage->keyType, tDataRid, ttRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- d. roll back insert least key in ls page ---
+				status = ((BTLeafPage *)ls)->deleteRecord(tmpRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				return OK;
+
+			}
+			else if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- unpin cur, l sibling page ---
+			status = MINIBASE_BM->unpinPage(pageNo, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+			status = MINIBASE_BM->unpinPage(lsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return OK;
+		}
+	}
+	return OK;
+}
+
+Status BTreeFile::leafRightRedistribution(const void* key, 
+		const RID rid, bool& lRedi, HFPage* currPage, HFPage* uPage)
+{
+	RID tmpRid;
+	Keytype tmpKey;
+	PageId tmpPageNo;
+	status = ((BTIndexPage*)uPage)->get_first(tmpRid, &tmpKey, tmpPageNo);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+	RID tmpDataRid;
+
+	//--- locate left sibling ---
+	PageId rsibling = tmpPageNo;
+	Keytype rKey;
+	//bool deRKey = true;
+
+	//--- if key < least key in uPage, find right sibling ---
+	if(keyCompare(key, &tmpKey, headerPage->keyType) < 0)
+	{
+		rsibling = tmpPageNo;
+		rKey = tmpKey;
+	}
+	else//--- key >= least key in uPage ---
+	{
+		RID nextTmpRid = tmpRid;
+		Keytype nextTmpKey;
+		PageId nextTmpPageNo;
+		status =((BTIndexPage*)uPage)->get_next(nextTmpRid, &nextTmpKey, 
+				nextTmpPageNo);
+		//--- if only one index entry in parent node ---
+		if(status == NOMORERECS)
+		{
+			rRedi = false;
+			return OK;
+		}
+		else if(status != OK)
+		{
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+		}
+		else //--- else if >= 2 index entry in parent node ---
+		{
+			RID nnextTmpRid = nextTmpRid;
+			Keytype nnextTmpKey;
+			PageId nnextTmpPageNo;
+			status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey, nnextTmpPageNo);
+			if(status != OK && status != NOMORERECS)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- if key is just bigger than first key ---
+			if(keyCompare(key, &nextTmpKey, headerPage->keyType) < 0)
+			{ 
+				rsibling = nextTmpPageNo;
+				rKey = nextTmpKey;
+			}
+			else if(status == NOMORERECS) // if only two entries
+			{
+				rRedi = false;
+				return OK;
+			}
+			else //-- more than 2 keys, and key bigger than second key -
+			{
+				while(true)
+				{
+					if(keyCompare(key, &nnextTmpKey, 
+								headerPage->keyType) < 0)
+					{
+						rsibling = nnextTmpPageNo;
+						rKey = nnextTmpKey;
+						break;
+					}
+
+					//--- update search ---
+					status =((BTIndexPage*)uPage)->get_next(tmpRid, &tmpKey, 
+							tmpPageNo);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					status = ((BTIndexPage*)uPage)->get_next(nextTmpRid, 
+							&nextTmpKey, nextTmpPageNo);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					status =((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey,
+							nnextTmpPageNo);
+					if(status != OK && status != NOMORERECS)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					//--- check if nnext reach end ---
+					if(status == NOMORERECS)
+					{
+						rRedi = false;
+						return OK;
+					}
+				}
+			}
+		}
+	}// find right sibling page no 
+
+	//--- pin right sibling ---
+	HFPage* rs;
+	status = MINIBASE_BM->pinPage(rsibling, (Page*& )rs);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	//--- compare key and currPage end entry ---
+	RID tRid;
+	Keytype tKey;
+	RID tDataRid;
+	status = ((BTLeafPage*)currPage)->get_first(tRid, &tKey,
+			tDataRid);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+	//--- if key is biggest among currPage key, ---
+	//--- insert it into right sibling,  ---
+	//--- otherwise insert end key of currPage into right sibling --
+
+
+	//--- get end entry of currPage ---
+	//--- ?? should use memcpy ---
+	Keytype endKey = tKey;
+	RID endRid = tDataRid;
+	while(true)
+	{
+		status = ((BTLeafPage *)currPage)->get_next(tRid, 
+				&tKey, tDataRid);
+		if(status != OK && status != NOMORERECS)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		if(status == NOMORERECS)
+			break;
+
+		endKey = tKey;
+		endRid = tDataRid;
+	}
+	//--- compare lower key with endKey of currPage ---
+	if(keyCompare(key, &endKey,
+				headerPage->keyType) < 0) // lower key smaller
+	{
+		//--- insert endKey into right sibling ---
+		status = ((BTLeafPage*)rs)->insertRec(&endKey, 
+				headerPage->keyType, endRid, tmpRid);
+
+		if(status != OK &&	status == DONE)
+		{
+			rRedi = false;	
+			return OK;
+		}
+		else if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- if right sibling has space --
+		//--- delete cur page end try ---
+		status = ((SortedPage*)currPage)->deleteRecord(endRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- insert new entry in cur page ---
+		status = ((BTLeafPage*)currPage)->insertRec(key,
+				headerPage->keyType, rid, tRid);
+		if(status != OK && status == DONE)
+		{
+			rRedi  = false;
+			//--- roll back ---
+			//--- a. roll back "delete cur page end entry" ---
+			status = ((BTLeafPage *)currPage)->insertRec(&endKey,
+					headerPage->keyType, endRid, tRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- b. roll back "insert endkey into right sibling" ---
+			status = ((SortedPage *)rs)->deleteRecord(tmpRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			return OK;
+		}
+		else if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		RID ttRid;
+		//--- push up end entry into uPage --- 
+		status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
+				headerPage->keyType, ttRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		status = ((BTIndexPage *)uPage)->insertKey(&endKey, 
+				headerPage->keyType, rsibling, ttRid);
+		if(status != OK && status == DONE)
+		{
+			rRedi  = false;
+			//--- roll back ---
+			//--- a. roll back "delete rkey in uPage" ---
+			status = ((BTIndexPage *)uPage)->insertKey(&rKey,
+					headerPage->keyType, rsibling, ttRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- b. roll back "insert new entry in cur page" ---
+			status = ((SortedPage *)currPage)->deletetRecord(tRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- c. roll back "delete cur page end entry" ---
+			status = ((BTLeafPage *)currPage)->insertRec(&endKey,
+					headerPage->keyType, endRid, tRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- d. roll back "insert endkey into right sibling" ---
+			status = ((SortedPage *)rs)->deletetRecord(tmpRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			return OK;
+		}
+		else if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- unpin cur, right sibling ---
+		status = MINIBASE_BM->unpinPage(pageNo, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+		status = MINIBASE_BM->unpinPage(rsibling, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		return OK;
+	}
+	else //--- lower key biggest 
+	{
+		//--- insert lowerKey into right sibling ---
+		status = ((BTLeafPage*)rs)->insertRec(key, 
+				headerPage->keyType, rid, tmpRid);
+
+		if(status != OK &&
+				status == DONE)
+		{
+			rRedi = false;
+			return OK;
+		}
+		else if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- if right sibling has space --
+		//--- push up end entry into uPage --- 
+		RID ttRid;
+		status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
+				headerPage->keyType, ttRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- get least key of right sibling ---
+		status = ((BTLeafPage*)rs)->get_first(tRid, 
+				&tKey, tDataRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- insert right sibling least key into uPage--
+		status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
+				headerPage->keyType, rsibling, tRid);
+		if(status != OK && status == DONE)
+		{
+			rRedi  = false;
+			//--- roll back ---
+			//--- a. roll back "delete rKey in uPage" ---
+			status = ((BTIndexPage *)uPage)->insertKey(&rKey,
+					headerPage->keyType, rsibling, ttRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			//--- b. roll back "insert lowerkey into right sibling" ---
+			status = ((SortedPage *)rs)->deleteRecord(tmpRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			return OK;
+		}
+		else if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- unpin currpage & right sibling ---
+		status = MINIBASE_BM->unpinPage(pageNo, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		status = MINIBASE_BM->unpinPage(rsibling, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		return OK;
+	}
+}
+
+Status BTreeFile::leafSplit(const void* key,
+		const RID rid, void* l_Key, PageId& l_UpPageNo, bool& l_split,
+		HFPage* currPage, HFPage* uPage)
+{
+	//--- mark split = true ---
+	l_split = true;
+
+	//--- split ---
+	//--- create a new leaf page l2 to hold data---
+	PageId newPageId = INVALID_PAGE;
+	Page * newPage;
+	status = MINIBASE_BM->newPage(newPageId, (Page *&)newPage);
+	if(status != OK){
+		return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
+
+	}
+	((BTLeafPage *)newPage)->init(newPageId);
+	//--- copy mid to end entries to new page from pageNo page ---
+
+	//--- 1. get the total index entries amount & whether overflow entry --
+	//--- is before mid or after mid ---
+	RID tRid;
+	Keytype tKey;
+	RID tDataRid;
+	status = ((BTLeafPage*)currPage)->get_first(tRid,
+			&tKey, tDataRid);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+	int totalEntry = 0;
+	int lKeyPos = 0;
+	bool flag = true;
+
+	while(true)
+	{
+		if(keyCompare(key, &tKey, 
+					headerPage->keyType) < 0 && flag)
+		{
+			lKeyPos = totalEntry;
+			flag = false;
+		}
+
+		status = ((BTLeafPage*)currPage)->get_next(tRid, &tKey, 
+				tDataRid);
+		if(status != OK && status != NOMORERECS)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+		if(status == NOMORERECS)
+			break;
+
+		totalEntry++;
+	}
+
+	totalEntry++;
+
+	status = ((BTLeafPage*)currPage)->get_first(tRid, 
+			&tKey, tDataRid);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+	//--- 2. skip front entries ---
+	//--- ?? right middle --- 
+	for(int i = 0; i < (totalEntry + 1) / 2; i++)
+	{
+		status = ((BTLeafPage*)currPage)->get_next(tRid, &tKey, 
+				tDataRid);
+		if(status != OK && status != NOMORERECS)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+	}
+
+	//--- 3. copy back entries to new page & delete if from currPage---
+	while(true)
+	{
+		//--- copy ---
+		RID tInsertRid;
+		status = ((BTLeafPage*)newPage)->insertRec(&tKey, 
+				headerPage->keyType, tDataRid, tInsertRid);
+		//--- if insertKey() returns NO_SPACE ---
+		//--- ?? can catch this NO_SPACE ---
+		if(status != OK && status != DONE)
+			return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
+
+		//--- delete ---
+		//status = ((BTLeafPage*)currPage)->deleteRecord(&tKey, 
+		//		headerPage->keyType, tInsertRid);
+		// weng, should call deleteRecord(tRid);
+		status = ((SortedPage*)currPage)->deleteRecord(tRid);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+		//--- get next copy ---
+		status = ((BTLeafPage*)currPage)->get_next(tRid, 
+				&tKey, tDataRid);
+		if(status != OK && status != NOMORERECS)
+			return MINIBASE_CHAIN_ERROR(BTREE, status);
+		if(status == NOMORERECS)
+			break;
+	}
+	//--- 4. insert new entry  ---
+	if(lKeyPos < (totalEntry + 1) / 2)
+	{
+		status = ((BTLeafPage*)currPage)->insertRec(key, 
+				headerPage->keyType, rid, tRid);
+		//--- if insertKey() returns NO_SPACE ---
+		//--- ?? can catch this NO_SPACE ---
+		if(status != OK && status != DONE)
+			return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
+	}
+	else
+	{
+		status = ((BTLeafPage*)newPage)->insertRec(key, 
+				headerPage->keyType, rid, tRid);
+		//--- if insertKey() returns NO_SPACE ---
+		//--- ?? can catch this NO_SPACE ---
+		if(status != OK && status != DONE)
+			return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
+	}
+
+	//--- 5. update lowerKey, lowerUpPageNo as ---
+	//--- mid entry(first entry in new page), and newPageId  ---
+	status = ((BTLeafPage*)newPage)->get_first(tRid, 
+			&tKey, tDataRid);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BTREE, status);
+	// weng l_Key = &tKey
+	l_Key = &tKey;
+	l_UpPageNo = newPageId;
+
+	//--- 6. set leaf page as doubly link list ---
+	newPage->setNextPage(currPage->getNextPage());
+	PageId newPageNextId = currPage->getNextPage();
+	currPage->setNextPage(newPageId);
+	newPage->setPrevPage(pageNo);
+	//--- 6.1 set new page next's prevPage as newPageId ---
+    HFPage* newPageNext;
+	status = MINIBASE_BM->pinPage(newPageNextId, (Page*&)newPageNext);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	newPageNext->setPrevPage(newPageId);
+	status = MINIBASE_BM->unpinPage(newPageNextId, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	//---  unpin cur, new page ---
+	status = MINIBASE_BM->unpinPage(newPageId, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+	status = MINIBASE_BM->unpinPage(pageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return OK;
+}
+
 
 //--- key: index entry key value to be inserted to upper layer ---
 //--- rid: the intended inserted rid for record ---
@@ -1498,7 +2268,9 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 			//--- if so, split & update root page ---
 			if(pageNo == headerPage->rootPageId)
 			{
-				//???
+				status = leafRootSplit(pageNo, key, rid, currPage);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
 			}
 
 				//--- if pageNo page is not root page ---
@@ -1508,612 +2280,42 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				//--- add least key into left sibling ---
 				bool lRedi = true;
 				bool rRedi = true;
-				//--- 1.1 retrieve left sibling ---
-				RID tmpRid;
-				Keytype tmpKey;
-				PageId tmpPageNo;
-				status = ((BTIndexPage*)uPage)->get_first(tmpRid, &tmpKey, tmpPageNo);
+
+				status = leafLeftRedistribution(key, rid, lRedi, currPage,
+						uPage);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-				//--- if key < least key in uPage, no left sibling ---
-				if(keyCompare(key, &tmpKey, headerPage->keyType) < 0)
-				{
-					lRedi = false;
-				}	
-				else //--- find left sibling  & try to do left redistribution ---
-				{
-					//--- locate left sibling ---
-					PageId lsibling = tmpPageNo;
-					Keytype lKey;
-					//bool deLKey = true;
-
-					RID nextTmpRid = tmpRid;
-					Keytype nextTmpKey;
-					PageId nextTmpPageNo;
-					status =((BTIndexPage*)uPage)->get_next(nextTmpRid, &nextTmpKey, 
-							nextTmpPageNo);
-					//--- if only one index entry in parent node ---
-					if(status == NOMORERECS)
-					{
-						lsibling = ((BTIndexPage*)uPage)->getLeftLink();
-						lKey = tmpKey;
-						//deLKey = false;
-					}
-					else if(status != OK)
-					{
-						return MINIBASE_CHAIN_ERROR(BTREE, status);
-					}
-					else
-					{
-						RID nnextTmpRid = nextTmpRid;
-						Keytype nnextTmpKey;
-						PageId nnextTmpPageNo;
-						status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey,
-								nnextTmpPageNo);
-						if(status != OK && status != NOMORERECS)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						//--- if key is just bigger than first key ---
-						if(keyCompare(key, &nextTmpKey, headerPage->keyType) < 0)
-						{ 
-							lsibling = ((BTIndexPage*)uPage)->getLeftLink();
-							lKey = tmpKey;
-							//deLKey = false;
-						}
-						else if(status == NOMORERECS) // if only two entries
-						{
-							lsibling = tmpPageNo;
-							lKey = tmpKey;
-						}
-						else //-- more than 2 keys, and key bigger than second key -
-						{
-							while(true)
-							{
-								if(keyCompare(key, &nnextTmpKey, 
-											headerPage->keyType) < 0)
-								{
-									lsibling = tmpPageNo;
-									lKey = tmpKey;
-									break;
-								}
-
-								//--- update search ---
-								status =((BTIndexPage*)uPage)->get_next(tmpRid, &tmpKey, 
-										tmpPageNo);
-								if(status != OK)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								status = ((BTIndexPage*)uPage)->get_next(nextTmpRid, 
-										&nextTmpKey, nextTmpPageNo);
-								if(status != OK)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								status =((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey,
-										nnextTmpPageNo);
-								if(status != OK && status != NOMORERECS)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								//--- check if nnext reach end ---
-								if(status == NOMORERECS)
-								{
-									lsibling = tmpPageNo;
-									lKey = tmpKey;
-									break;
-								}
-							}
-						}
-					} // find left sibling page no 
-
-					//--- do left redistribution --- 
-
-					//--- pin left sibling ---
-					HFPage* ls;
-					status = MINIBASE_BM->pinPage(lsibling, (Page*& )ls);
-					if(status != OK)
-						return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-					//--- compare key and currPage first entry ---
-					RID tRid;
-					Keytype tKey;
-					RID tDataRid;
-					status = ((BTLeafPage*)currPage)->get_first(tRid, &tKey, tDataRid);
-					if(status != OK)
-						return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-					//--- if key is least, insert it into left sibling --
-					if(keyCompare(key, &tKey, headerPage->keyType) < 0)
-					{
-						status = ((BTLeafPage*)ls)->insertRec(key, 
-								headerPage->keyType, tDataRid, insertRid);
-						if(status != OK && status == DONE)
-							lRedi = false;	
-						else if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						//--- if left sibling has space --
-						//--- get end entry of left sibling & ---
-						//---inset into uPage to replace lKey --- 
-						if(lRedi)
-						{
-							//--- get end entry of left sibling ---
-							status = ((BTLeafPage*)ls)->get_first(tRid, 
-									&tKey, tDataRid);
-							if(status != OK && status != NOMORERECS)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- ?? should use memcpy ---
-							Keytype endKey = tKey;
-
-							while(true)
-							{
-								status = ((BTLeafPage*)ls)->get_next(tRid, &tKey, 
-										tDataRid);
-								if(status != OK && status != NOMORERECS)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								if(status == NOMORERECS)
-									break;
-
-								endKey = tKey;
-							}
-							//--- push up end entry into uPage --- 
-							status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
-									headerPage->keyType, insertRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							status = ((BTIndexPage *)uPage)->insertKey(&endKey, 
-									headerPage->keyType, pageNo, insertRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- unpin cur, left sbiling ---
-							status = MINIBASE_BM->unpinPage(pageNo, true);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-							status = MINIBASE_BM->unpinPage(lsibling, true);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-
-							return OK;
-						}
-					}
-					else //--- insert pageNo least key into left sibling & uPage &
-						//--- delete itself ---
-						//--- insert key into pageNo page ---
-					{
-						//--- get least key in pageNo page ---
-						status = ((BTLeafPage*)currPage)->get_first(tRid, 
-								&tKey, tDataRid);
-						if(status != OK && status != NOMORERECS)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						//--- insert least key into left sibling ---
-						status = ((BTLeafPage*)ls)->insertRec(&tKey, 
-								headerPage->keyType, tDataRid, insertRid);
-						if(status != OK && status == DONE)
-							lRedi = false;	
-						else if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						if(lRedi)
-						{
-							//--- delete least key in pageNo page ---
-							status = ((SortedPage*)currPage)->deleteRecord(tRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- delete useless key in uPage ---
-							status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
-									headerPage->keyType, insertRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- insert least key into uPage ---
-							status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
-									headerPage->keyType, pageNo, insertRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- insert new entry into pageNo page ---
-							status = ((BTLeafPage*)currPage)->insertRec(key, 
-									headerPage->keyType, rid, insertRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- unpin cur, l sibling page ---
-							status = MINIBASE_BM->unpinPage(pageNo, true);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-							status = MINIBASE_BM->unpinPage(lsibling, true);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-
-							return OK;
-						}
-					}
-				}// try left sibling redist --
 
 				//--- 2. retrieve right sibling & try to redistribute---
 				//--- add least key into left sibling ---
 				if(!lRedi)
 				{
-					//--- locate left sibling ---
-					PageId rsibling = tmpPageNo;
-					Keytype rKey;
-					//bool deRKey = true;
-
-					//--- if key < least key in uPage, find right sibling ---
-					if(keyCompare(key, &tmpKey, headerPage->keyType) < 0)
-					{
-						rsibling = tmpPageNo;
-						rKey = tmpKey;
-					}
-					else//--- key >= least key in uPage ---
-					{
-						RID nextTmpRid = tmpRid;
-						Keytype nextTmpKey;
-						PageId nextTmpPageNo;
-						status =((BTIndexPage*)uPage)->get_next(nextTmpRid, &nextTmpKey, 
-								nextTmpPageNo);
-						//--- if only one index entry in parent node ---
-						if(status == NOMORERECS)
-						{
-							rRedi = false;
-						}
-						else if(status != OK)
-						{
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-						}
-						else //--- else if >= 2 index entry in parent node ---
-						{
-							RID nnextTmpRid = nextTmpRid;
-							Keytype nnextTmpKey;
-							PageId nnextTmpPageNo;
-							status = ((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey, nnextTmpPageNo);
-							if(status != OK && status != NOMORERECS)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- if key is just bigger than first key ---
-							if(keyCompare(key, &nextTmpKey, headerPage->keyType) < 0)
-							{ 
-								rsibling = nextTmpPageNo;
-								rKey = nextTmpKey;
-								//deLKey = false;
-							}
-							else if(status == NOMORERECS) // if only two entries
-							{
-								rRedi = false;
-							}
-							else //-- more than 2 keys, and key bigger than second key -
-							{
-								while(true)
-								{
-									if(keyCompare(key, &nnextTmpKey, 
-												headerPage->keyType) < 0)
-									{
-										rsibling = nnextTmpPageNo;
-										rKey = nnextTmpKey;
-										break;
-									}
-
-									//--- update search ---
-									status =((BTIndexPage*)uPage)->get_next(tmpRid, &tmpKey, 
-											tmpPageNo);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									status = ((BTIndexPage*)uPage)->get_next(nextTmpRid, 
-											&nextTmpKey, nextTmpPageNo);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									status =((BTIndexPage*)uPage)->get_next(nnextTmpRid, &nnextTmpKey,
-											nnextTmpPageNo);
-									if(status != OK && status != NOMORERECS)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- check if nnext reach end ---
-									if(status == NOMORERECS)
-									{
-										rRedi = false;
-										break;
-									}
-								}
-							}
-						} // find right sibling page no 
-
-						//--- do right redistribution --- 
-						if(rRedi)
-						{
-							//--- pin right sibling ---
-							HFPage* rs;
-							status = MINIBASE_BM->pinPage(rsibling, (Page*& )rs);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-							//--- compare key and currPage end entry ---
-							RID tRid;
-							Keytype tKey;
-							RID tDataRid;
-							status = ((BTLeafPage*)currPage)->get_first(tRid, &tKey,
-									tDataRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- if key is biggest among currPage key, ---
-							//--- insert it into right sibling,  ---
-							//--- otherwise insert end key of currPage into right sibling --
-
-
-							//--- get end entry of currPage ---
-							//--- ?? should use memcpy ---
-							Keytype endKey = tKey;
-							RID endRid = tDataRid;
-							while(true)
-							{
-								status = ((BTLeafPage *)currPage)->get_next(tRid, 
-										&tKey, tDataRid);
-								if(status != OK && status != NOMORERECS)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								if(status == NOMORERECS)
-									break;
-
-								endKey = tKey;
-								endRid = tDataRid;
-							}
-							//--- compare lower key with endKey of currPage ---
-							if(keyCompare(key, &endKey,
-										headerPage->keyType) < 0) // lower key smaller
-							{
-								//--- insert endKey into right sibling ---
-								status = ((BTLeafPage*)rs)->insertRec(&endKey, 
-										headerPage->keyType, endRid, insertRid);
-
-								if(status != OK &&
-										status == DONE)
-									rRedi = false;	
-								else if(status != OK)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								//--- if right sibling has space --
-								if(rRedi)
-								{
-									//--- delete cur page end try ---
-									status = ((SortedPage*)currPage)->deleteRecord(endRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- insert new entry in cur page ---
-									status = ((BTLeafPage*)currPage)->insertRec(key,
-											headerPage->keyType, rid, insertRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- push up end entry into uPage --- 
-									status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
-											headerPage->keyType, insertRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									status = ((BTIndexPage *)uPage)->insertKey(&endKey, 
-											headerPage->keyType, rsibling, insertRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- unpin cur, right sibling ---
-									status = MINIBASE_BM->unpinPage(pageNo, true);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-									status = MINIBASE_BM->unpinPage(rsibling, true);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-									return OK;
-								}
-							}
-							else //--- lower key biggest 
-							{
-								//--- insert lowerKey into right sibling ---
-								status = ((BTLeafPage*)rs)->insertRec(key, 
-										headerPage->keyType, rid, insertRid);
-
-								if(status != OK &&
-										status == DONE)
-									rRedi = false;	
-								else if(status != OK)
-									return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-								//--- if right sibling has space --
-								if(rRedi)
-								{
-									//--- push up end entry into uPage --- 
-									status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
-											headerPage->keyType, insertRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- get least key of right sibling ---
-									status = ((BTLeafPage*)rs)->get_first(tRid, 
-											&tKey, tDataRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- insert right sibling least key into uPage--
-									status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
-											headerPage->keyType, rsibling, insertRid);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-									//--- unpin currpage & right sibling ---
-									status = MINIBASE_BM->unpinPage(pageNo, true);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-									status = MINIBASE_BM->unpinPage(rsibling, true);
-									if(status != OK)
-										return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-									return OK;
-								}
-							} // 777 --- lower key compare with currpage end key --
-						}//--- 738 after locate right sibling page no, 
-						//do right redistribution 
-					}//-------650 try right redis end ----
-
-
-					//--- 3. if both redistribution returns false, split & ---
-					//---construct key push up ---
-					if(!lRedi && !rRedi)
-					{
-						//--- mark split = true ---
-						l_split = true;
-
-						//--- split ---
-						//--- create a new leaf page l2 to hold data---
-						PageId newPageId = INVALID_PAGE;
-						Page * newPage;
-						status = MINIBASE_BM->newPage(newPageId, (Page *&)newPage);
-						if(status != OK){
-							return MINIBASE_FIRST_ERROR(BTREE, ROOT_ALLOC_ERROR);
-							
-						}
-						((BTLeafPage *)newPage)->init(newPageId);
-						//--- copy mid to end entries to new page from pageNo page ---
-
-						//--- 1. get the total index entries amount & whether overflow entry --
-						//--- is before mid or after mid ---
-						RID tRid;
-						Keytype tKey;
-						RID tDataRid;
-						status = ((BTLeafPage*)currPage)->get_first(tRid,
-								&tKey, tDataRid);
-						if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						int totalEntry = 0;
-						int lKeyPos = 0;
-
-						while(true)
-						{
-							if(keyCompare(key, &tKey, 
-										headerPage->keyType) < 0)
-								lKeyPos = totalEntry;
-
-							status = ((BTLeafPage*)currPage)->get_next(tRid, &tKey, 
-									tDataRid);
-							if(status != OK && status != NOMORERECS)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-							if(status == NOMORERECS)
-								break;
-
-							totalEntry++;
-						}
-
-						totalEntry++;
-
-						status = ((BTLeafPage*)currPage)->get_first(tRid, 
-								&tKey, tDataRid);
-						if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-						//--- 2. skip front entries ---
-						//--- ?? right middle --- 
-						for(int i = 0; i < (totalEntry + 1) / 2; i++)
-						{
-							status = ((BTLeafPage*)currPage)->get_next(tRid, &tKey, 
-									tDataRid);
-							if(status != OK && status != NOMORERECS)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-						}
-
-						//--- 3. copy back entries to new page & delete if from currPage---
-						while(true)
-						{
-							//--- copy ---
-							RID tInsertRid;
-							status = ((BTLeafPage*)newPage)->insertRec(&tKey, 
-									headerPage->keyType, tDataRid, tInsertRid);
-							//--- if insertKey() returns NO_SPACE ---
-							//--- ?? can catch this NO_SPACE ---
-							if(status != OK && status != DONE)
-								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-
-							//--- delete ---
-							//status = ((BTLeafPage*)currPage)->deleteRecord(&tKey, 
-							//		headerPage->keyType, tInsertRid);
-							// weng, should call deleteRecord(tRid);
-							status = ((BTLeafPage *)currPage)->deleteRecord(tRid);
-							if(status != OK)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-							//--- get next copy ---
-							status = ((BTLeafPage*)currPage)->get_next(tRid, 
-									&tKey, tDataRid);
-							if(status != OK && status != NOMORERECS)
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-							if(status == NOMORERECS)
-								break;
-						}
-						//--- 4. insert new entry  ---
-						if(lKeyPos < (totalEntry + 1) / 2)
-						{
-							status = ((BTLeafPage*)currPage)->insertRec(key, 
-									headerPage->keyType, rid, insertRid);
-							//--- if insertKey() returns NO_SPACE ---
-							//--- ?? can catch this NO_SPACE ---
-							if(status != OK && status != DONE)
-								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-						}
-						else
-						{
-							status = ((BTLeafPage*)newPage)->insertRec(key, 
-									headerPage->keyType, rid, insertRid);
-							//--- if insertKey() returns NO_SPACE ---
-							//--- ?? can catch this NO_SPACE ---
-							if(status != OK && status != DONE)
-								return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-						}
-
-						//--- 5. update lowerKey, lowerUpPageNo as ---
-						//--- mid entry(first entry in new page), and newPageId  ---
-						status = ((BTLeafPage*)newPage)->get_first(tRid, 
-								&tKey, tDataRid);
-						if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-						// weng l_Key = &tKey
-						l_Key = &tKey;
-						l_UpPageNo = newPageId;
-
-						//---  unpin cur, new page ---
-						status = MINIBASE_BM->unpinPage(newPageId, true);
-						if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-						status = MINIBASE_BM->unpinPage(pageNo, true);
-						if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-						return OK;
-
-					}// need redis or split : line 282 
-
-					//---  unpin  new page ---
-					status = MINIBASE_BM->unpinPage(pageNo, true);
+					status = leafRightRedistribution(key, rid, rRedi,
+							currPage, uPage);
 					if(status != OK)
-						return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+				}
 
-					return OK;
-				}//--- currpage is leaf page
+				//--- 3. if both redistribution returns false, split & ---
+				//---construct key push up ---
+				if(!lRedi && !rRedi)
+				{
+					//???
+				}
+
+				//---  unpin  new page ---
+				status = MINIBASE_BM->unpinPage(pageNo, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
 				return OK;
-			}
-		}
+		}//--- currpage is leaf page
+		return OK;
+	}
+}
 //*/ weng
-		//??? unpin currpage, since lowersplit is false
-	return OK;
+//??? unpin currpage, since lowersplit is false
+return OK;
 } //---? function
 
 Status BTreeFile::insert(const void *key, const RID rid) {
