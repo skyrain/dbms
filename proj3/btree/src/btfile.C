@@ -402,7 +402,7 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 			break;
 	}
 	//--- 4. insert new entry  ---
-	if(lKeyPos < (totalEntry + 1) / 2)
+	if(lKeyPos < (totalEntry + 1) / 2 && !flag)
 	{
 		status = ((BTIndexPage*)currPage)->insertKey(&lowerKey, 
 				headerPage->keyType, lowerUpPageNo, tRid);
@@ -1162,7 +1162,7 @@ Status BTreeFile::indexSplit(PageId pageNo, const Keytype lowerKey,
 			break;
 	}
 	//--- 4. insert new entry  ---
-	if(lKeyPos < (totalEntry + 1) / 2)
+	if(lKeyPos < (totalEntry + 1) / 2 && !flag)
 	{
 		status = ((BTIndexPage*)currPage)->insertKey(&lowerKey, 
 				headerPage->keyType, lowerUpPageNo, tRid);
@@ -1331,7 +1331,7 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 			break;
 	}
 	//--- 4. insert new entry  ---
-	if(lKeyPos < (totalEntry + 1) / 2)
+	if(lKeyPos < (totalEntry + 1) / 2 && !flag)
 	{
 		status = ((BTLeafPage*)currPage)->insertRec(key, 
 				headerPage->keyType, rid, tRid);
@@ -2085,7 +2085,7 @@ Status BTreeFile::leafSplit(PageId pageNo, const void* key,
 			break;
 	}
 	//--- 4. insert new entry  ---
-	if(lKeyPos < (totalEntry + 1) / 2)
+	if(lKeyPos < (totalEntry + 1) / 2 && !flag)
 	{
 		status = ((BTLeafPage*)currPage)->insertRec(key, 
 				headerPage->keyType, rid, tRid);
