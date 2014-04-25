@@ -105,7 +105,7 @@ Status BTIndexPage::insertKey (const void *key,
 
 	Status status;
 	// Call SortedPage::insertRecord() to accomplish the insert.
-	status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
+	status = SortedPage::insertRecord(key_type, targetC, entryLen, rid);
 	
 	//--- free 
 	free(targetC);
