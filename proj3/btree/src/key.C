@@ -119,7 +119,8 @@ void make_entry(KeyDataEntry *target,
 		cout << " KeyType unknown: " << key_type << endl;
 
 	// write data into memory chunk of targe
-	memcpy(target + key_len, &data, data_len);
+//	memcpy(target + key_len, &data, data_len);
+	(*target).data = data;
 }
 
 

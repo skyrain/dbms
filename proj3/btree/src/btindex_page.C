@@ -91,25 +91,34 @@ Status BTIndexPage::insertKey (const void *key,
 	// init the parameter for a data entry
 	KeyDataEntry target;
 	Datatype datatype;
-        datatype.pageNo = pageNo;
-	
-        // Call Key::make_entry for this data record
+	datatype.pageNo = pageNo;
+
+	// Call Key::make_entry for this data record
 	int entryLen;
 	entryLen = 0;
-        make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);
+	make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);
 
-        Status status;
-        // Call SortedPage::insertRecord() to accomplish the insert.
-        status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
-        if(status != OK)
-		{
-			if(status == DONE)
-				return DONE;
-			else
-                		return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXINSERTFAIL);
-		}
-        else
-                return OK;
+	char* targetC = (char* )calloc(1, entryLen);
+	memcpy(targetC, &target.key, entryLen - sizeof(target.data));
+	memcpy(targetC + entryLen - sizeof(target.data), &target.data,
+			sizeof(target.data));
+
+	Status status;
+	// Call SortedPage::insertRecord() to accomplish the insert.
+	status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
+	
+	//--- free 
+	free(targetC);
+
+	if(status != OK)
+	{
+		if(status == DONE)
+			return DONE;
+		else
+			return MINIBASE_FIRST_ERROR(BTINDEXPAGE, INDEXINSERTFAIL);
+	}
+	else
+		return OK;
 }
 
 // ------------------- deletekey ------------------------

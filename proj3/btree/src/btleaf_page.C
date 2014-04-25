@@ -98,10 +98,19 @@ Status BTLeafPage::insertRec(const void *key,
 	entryLen = 0;
 	// Call Key::make_entry for this data record
 	make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);	
+	
+	char* targetC = (char*)calloc(1, entryLen);
+	memcpy(targetC, &target.key, entryLen - sizeof(target.data));
+	memcpy(targetC + entryLen - sizeof(target.data), &target.data, 
+			sizeof(target.data));
 
 	Status status;
 	// Call SortedPage::insertRecord() to accomplish the insert.
-	status = SortedPage::insertRecord(key_type, (char*)&target, entryLen, rid);
+	status = SortedPage::insertRecord(key_type, targetC, entryLen, rid);
+	
+	//free 
+	free(targetC);
+
 	if(status != OK)
 	{
 		if(status == DONE)
