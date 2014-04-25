@@ -100,9 +100,9 @@ Status BTLeafPage::insertRec(const void *key,
 	make_entry(&target, key_type, key, (nodetype)type, datatype, &entryLen);	
 	
 	char* targetC = (char*)calloc(1, entryLen);
-	memcpy(targetC, &target.key, entryLen - sizeof(target.data));
-	memcpy(targetC + entryLen - sizeof(target.data), &target.data, 
-			sizeof(target.data));
+	memcpy(targetC, &target.key, entryLen - sizeof(RID));
+	memcpy(targetC + entryLen - sizeof(RID), &target.data, 
+			sizeof(RID));
 
 	Status status;
 	// Call SortedPage::insertRecord() to accomplish the insert.
