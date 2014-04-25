@@ -1844,7 +1844,7 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 
 		//--- if right sibling has space --
 		//--- delete cur page end try ---
-		status = ((SortedPage*)currPage)->deleteRecord(endRid);
+		status = ((SortedPage*)currPage)->deleteRecord(tRid);
 		if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
 
