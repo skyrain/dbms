@@ -40,6 +40,7 @@ enum btErrCodesa{
 	REC_NOT_FOUND,
 	GET_PAGE_NO_ERROR,
 	NO_LEAF_NODE,
+	NO_KEY_TYPE,
 };
 
 class BTreeFile: public IndexFile
