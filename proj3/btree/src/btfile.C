@@ -469,12 +469,8 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 	status = MINIBASE_BM->unpinPage(newPageId, true);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-	status = MINIBASE_BM->unpinPage(pageNo, true);
-	if(status != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
+	
 	return OK;
-
 }
 
 Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
@@ -596,12 +592,17 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 		//--- if lower key is least, insert it into left sibling --
 		if(keyCompare(&lowerKey, &tKey, headerPage->keyType) < 0)
 		{
-			status = ((BTIndexPage*)ls)->insertKey(&lowerKey, headerPage->keyType, lowerUpPageNo, tmpRid);
+			status = ((BTIndexPage*)ls)->insertKey(&lowerKey, 
+					headerPage->keyType, lowerUpPageNo, tmpRid);
 			//--- if left sibling no space ---
 			if(status != OK && status == DONE)
 			{
-				lRedi = false;	
-				return OK;
+				lRedi = false;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -652,20 +653,14 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-			//--- unpin cur, left sbiling ---
-			status = MINIBASE_BM->unpinPage(pageNo, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-			status = MINIBASE_BM->unpinPage(lsibling, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-			return OK;
 		}
 		else //--- insert pageNo least key into left sibling & uPage &
 			//--- delete itself ---
@@ -681,8 +676,12 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 					headerPage->keyType, tPageNo, tmpRid);
 			if(status != OK && status == DONE)
 			{
-				lRedi = false;	
-				return OK;
+				lRedi = false;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -724,7 +723,11 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -761,24 +764,22 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-			//--- unpin cur, l sibling page ---
-			status = MINIBASE_BM->unpinPage(pageNo, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-			status = MINIBASE_BM->unpinPage(lsibling, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-			return OK;
 		}
+
+		status = MINIBASE_BM->unpinPage(lsibling, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		return status;
 	}
-	return OK;
 }
 
 Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey,
@@ -927,7 +928,11 @@ Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey
 				status == DONE)
 		{
 			rRedi = false;
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -958,7 +963,12 @@ Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
+
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -999,20 +1009,15 @@ Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
+
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-		//--- unpin cur, right sibling ---
-		status = MINIBASE_BM->unpinPage(pageNo, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-		status = MINIBASE_BM->unpinPage(rsibling, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		return OK;
 	}
 	else //--- lower key biggest 
 	{
@@ -1024,7 +1029,11 @@ Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey
 				status == DONE)
 		{
 			rRedi = false;
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1061,22 +1070,21 @@ Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
+
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
+	}
+	status = MINIBASE_BM->unpinPage(rsibling, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
-		//--- unpin currpage & right sibling ---
-		status = MINIBASE_BM->unpinPage(pageNo, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		status = MINIBASE_BM->unpinPage(rsibling, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		return OK;
-	} 
+	return status;
 } 
 
 Status BTreeFile::indexSplit(PageId pageNo, const Keytype lowerKey,
@@ -1223,9 +1231,6 @@ Status BTreeFile::indexSplit(PageId pageNo, const Keytype lowerKey,
 
 	//---  unpin cur, new page ---
 	status = MINIBASE_BM->unpinPage(newPageId, true);
-	if(status != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-	status = MINIBASE_BM->unpinPage(pageNo, true);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
@@ -1397,10 +1402,11 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 	status = MINIBASE_BM->unpinPage(newPageId, true);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+	/*
 	status = MINIBASE_BM->unpinPage(pageNo, true);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
+	*/
 	return OK;
 }
 
@@ -1527,8 +1533,12 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 					headerPage->keyType, tDataRid, tmpRid);
 			if(status != OK && status == DONE)
 			{
-				lRedi = false;	
-				return OK;
+				lRedi = false;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1580,20 +1590,14 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-			//--- unpin cur, left sbiling ---
-			status = MINIBASE_BM->unpinPage(pageNo, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-			status = MINIBASE_BM->unpinPage(lsibling, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-			return OK;
 		}
 		else //--- insert pageNo least key into left sibling & uPage &
 			//--- delete itself ---
@@ -1611,7 +1615,11 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 			if(status != OK && status == DONE)
 			{
 				lRedi = false;
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1652,7 +1660,12 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
+
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1688,24 +1701,23 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				return OK;
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-			//--- unpin cur, l sibling page ---
-			status = MINIBASE_BM->unpinPage(pageNo, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-			status = MINIBASE_BM->unpinPage(lsibling, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-			return OK;
 		}
+
+		//--- unpin cur, left sbiling ---
+		status = MINIBASE_BM->unpinPage(lsibling, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+		return status;
 	}
-	return OK;
 }
 
 Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key, 
@@ -1855,8 +1867,12 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 
 		if(status != OK &&	status == DONE)
 		{
-			rRedi = false;	
-			return OK;
+			rRedi = false;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1885,7 +1901,11 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1925,20 +1945,14 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-		//--- unpin cur, right sibling ---
-		status = MINIBASE_BM->unpinPage(pageNo, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-		status = MINIBASE_BM->unpinPage(rsibling, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		return OK;
 	}
 	else //--- lower key biggest 
 	{
@@ -1950,7 +1964,11 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 				status == DONE)
 		{
 			rRedi = false;
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1987,22 +2005,21 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			return OK;
+			status = MINIBASE_BM->unpinPage(rsibling, true);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+			return status;
 		}
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-		//--- unpin currpage & right sibling ---
-		status = MINIBASE_BM->unpinPage(pageNo, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		status = MINIBASE_BM->unpinPage(rsibling, true);
-		if(status != OK)
-			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-		return OK;
 	}
+	
+	status = MINIBASE_BM->unpinPage(rsibling, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return status;
 }
 
 Status BTreeFile::leafSplit(PageId pageNo, const void* key,
@@ -2163,9 +2180,6 @@ Status BTreeFile::leafSplit(PageId pageNo, const void* key,
 	status = MINIBASE_BM->unpinPage(newPageId, true);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-	status = MINIBASE_BM->unpinPage(pageNo, true);
-	if(status != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 	return OK;
 }
@@ -2218,16 +2232,7 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 			RID insertRid;
 			status = ((BTIndexPage*)currPage)->insertKey(&lowerKey, 
 					headerPage->keyType, lowerUpPageNo, insertRid);
-			if(status == OK)
-			{
-				//---  unpin  new page ---
-				status = MINIBASE_BM->unpinPage(pageNo, true);
-				if(status != OK)
-					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-				return OK;
-			}
-
+			
 			//--- if insertKey() returns NO_SPACE ---
 			//--- ?? can catch this NO_SPACE ---
 			if(status != OK && status != DONE)
@@ -2244,47 +2249,47 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-					return OK;
-
 				}//--- if currpage is root page
-
-				//--- if pageNo page is not root page ---
-				//--- try redistribution first ---
-
-				//--- 1. retrieve left sibling & try to redistribute---
-				//--- add least key into left sibling ---
-				bool lRedi = true;
-				bool rRedi = true;
-
-				status = indexLeftRedistribution(pageNo, lowerKey, 
-						lowerUpPageNo, lRedi, currPage, uPage);
-				if(status != OK)
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-				//--- 2. retrieve right sibling & try to redistribute---
-				//--- add least key into left sibling ---
-				if(!lRedi)
+				else
 				{
-					status = indexRightRedistribution(pageNo, lowerKey, 
-							lowerUpPageNo, rRedi, currPage, uPage);
+					//--- if pageNo page is not root page ---
+					//--- try redistribution first ---
+
+					//--- 1. retrieve left sibling & try to redistribute---
+					//--- add least key into left sibling ---
+					bool lRedi = true;
+					bool rRedi = true;
+
+					status = indexLeftRedistribution(pageNo, lowerKey, 
+							lowerUpPageNo, lRedi, currPage, uPage);
 					if(status != OK)
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					//--- 2. retrieve right sibling & try to redistribute---
+					//--- add least key into left sibling ---
+					if(!lRedi)
+					{
+						status = indexRightRedistribution(pageNo, lowerKey, 
+								lowerUpPageNo, rRedi, currPage, uPage);
+						if(status != OK)
+							return MINIBASE_CHAIN_ERROR(BTREE, status);
+					}
+
+					//--- 3. if both redistribution returns false, split & ---
+					//---construct key push up ---
+					if(!lRedi && !rRedi)
+					{
+						status = indexSplit(pageNo, lowerKey, lowerUpPageNo,
+								l_Key, l_UpPageNo, l_split,
+								currPage, uPage);
+						if(status != OK)
+							return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+					}
 				}
-
-				//--- 3. if both redistribution returns false, split & ---
-				//---construct key push up ---
-				if(!lRedi && !rRedi)
-				{
-					status = indexSplit(pageNo, lowerKey, lowerUpPageNo,
-							l_Key, l_UpPageNo, l_split,
-							currPage, uPage);
-					if(status != OK)
-						return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-				} 
 			}
 		}// lower split true
-		return status;
+
 	}//-- currPage is index page
 	else //--- currPage is leaf page ---
 	{
@@ -2293,14 +2298,6 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 		status = ((BTLeafPage*)currPage)->insertRec(key, 
 				headerPage->keyType, rid, insertRid);
 		
-		if(status == OK)
-		{
-			//--- unpin curr page ---
-			status = MINIBASE_BM->unpinPage(pageNo, true);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-			return OK;
-		}
 		//--- if insertRec() returns NO_SPACE ---
 		//--- ?? can catch this NO_SPACE ---
 		if(status != OK && status != DONE)
@@ -2314,57 +2311,57 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 				status = leafRootSplit(pageNo, key, rid, currPage);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
-			
-				return OK;
 			}
-
-			//--- if pageNo page is not root page ---
-			//--- try redistribution first ---
-
-			//--- 1. retrieve left sibling & try to redistribute---
-			//--- add least key into left sibling ---
-			bool lRedi = true;
-			bool rRedi = true;
-
-			status = leafLeftRedistribution(pageNo, key, rid, lRedi,
-					currPage, uPage);
-			if(status != OK)
-				return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-			//--- 2. retrieve right sibling & try to redistribute---
-			//--- add least key into left sibling ---
-			if(!lRedi)
+			else
 			{
-				status = leafRightRedistribution(pageNo, key, rid, rRedi,
+
+				//--- if pageNo page is not root page ---
+				//--- try redistribution first ---
+
+				//--- 1. retrieve left sibling & try to redistribute---
+				//--- add least key into left sibling ---
+				bool lRedi = true;
+				bool rRedi = true;
+
+				status = leafLeftRedistribution(pageNo, key, rid, lRedi,
 						currPage, uPage);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
-			}
 
-			//--- 3. if both redistribution returns false, split & ---
-			//---construct key push up ---
-			if(!lRedi && !rRedi)
-			{
-				status = leafSplit(pageNo, key, rid, l_Key, 
-						l_UpPageNo, l_split, currPage, uPage);
-				if(status != OK)
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-			}
+				//--- 2. retrieve right sibling & try to redistribute---
+				//--- add least key into left sibling ---
+				if(!lRedi)
+				{
+					status = leafRightRedistribution(pageNo, key, rid, rRedi,
+							currPage, uPage);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+				}
 
-			return OK;
-		}//--- currpage is leaf page
-		return status;
+				//--- 3. if both redistribution returns false, split & ---
+				//---construct key push up ---
+				if(!lRedi && !rRedi)
+				{
+					status = leafSplit(pageNo, key, rid, l_Key, 
+							l_UpPageNo, l_split, currPage, uPage);
+					if(status != OK)
+						return MINIBASE_CHAIN_ERROR(BTREE, status);
+				}
+			}
+		}
 	}
+
+	//---  unpin  curr  page ---
+	status = MINIBASE_BM->unpinPage(pageNo, true);
+	if(status != OK)
+		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+	return status;
 }
 
 Status BTreeFile::insert(const void *key, const RID rid) {
 	// put your code here
 	Status status;
-	//--- retrieve root page ---
-	HFPage* rootPage;
-	status = MINIBASE_BM->pinPage(headerPage->rootPageId, (Page*&) rootPage);
-	if(status != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 	//-- call insertHelper ---
 	Keytype lowerKey;
@@ -2373,11 +2370,10 @@ Status BTreeFile::insert(const void *key, const RID rid) {
 	HFPage *tmpPage = NULL;
 	status = insertHelper(key, rid, headerPage->rootPageId, &lowerKey, 
 		lowerUpPageNo, lowerSplit, tmpPage);
-
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 
-  return OK;
+	return OK;
 }
 
 // Delete the data (key, rid) pairs
