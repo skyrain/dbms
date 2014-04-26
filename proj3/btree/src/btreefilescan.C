@@ -331,6 +331,7 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 				}else
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
 			}
+			res = keyCompare(&dataEntry.key, lo_key, keyType);
 		}
 		curRid.slotNo --;
 	}

@@ -210,7 +210,15 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 	        // give the value to filename;
         	this->filename = new char[strlen(filename) + 1];
 	        strcpy(this->filename, filename);
-        	returnStatus = OK;
+		// Assign the index page with a given attribute type.		
+		if(keytype == attrString)
+			this->headerPage->keyType = attrString;
+		else if(keytype == attrInteger)
+			this->headerPage->keyType = attrInteger;
+		else // other type
+			returnStatus = MINIBASE_FIRST_ERROR(BTREE, ADD_FILE_ENTRY_ERROR);
+        	
+		returnStatus = OK;
 	}
 }
 
