@@ -434,7 +434,7 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 	if(status != OK && status != DONE)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 	
-	//???处理 status == DONE的情况
+	//???处理 status == DONE的情�?
 	
 	//--- 6. delete step 5 mid entry from new page(push up) ---
 	status = ((BTIndexPage*)newPage)->get_first(tRid, &tKey, tPageNo);
@@ -1189,7 +1189,7 @@ Status BTreeFile::indexSplit(PageId pageNo, const Keytype lowerKey,
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 	// weng &tKey
-	//??? 退出函数后，l_Key的值还存在？
+	//??? 退出函数后，l_Key的值还存在�?
 	if(headerPage->keyType == attrInteger)
 	{
 		*(int*)l_Key = tKey.intkey;
@@ -1373,7 +1373,7 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 	if(status != OK && status != DONE)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 	
-	//???处理 status == DONE的情况
+	//???处理 status == DONE的情�?
 
 	//---6. set root page left link ---
 	((BTIndexPage*)rootPage)->setLeftLink(pageNo);
@@ -2456,6 +2456,8 @@ Status BTreeFile::deleteHelper(const void *key, const RID rid, PageId pageNo)
                                                 return MINIBASE_CHAIN_ERROR(BTREE, status);
                                 }
                         }
+			// if run till here, record the key compare result in res.
+			res = keyCompare(key, &tmpEntry.key, keyType);
                 }
         }
 
