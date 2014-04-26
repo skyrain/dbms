@@ -105,6 +105,7 @@ const char* BtreeErrorMsgs[] = {
   // CANT_SPLIT_LEAF_PAGE
   // CANT_SPLIT_INDEX_PAGE
   "Can't allocate leaf page"
+  "No key type"
 };
 
 static error_string_table btree_table( BTREE, BtreeErrorMsgs);
@@ -1189,7 +1190,17 @@ Status BTreeFile::indexSplit(PageId pageNo, const Keytype lowerKey,
 
 	// weng &tKey
 	//??? 退出函数后，l_Key的值还存在？
-	l_Key = &tKey;
+	if(headerPage->keyType == attrInteger)
+	{
+		*(int*)l_Key = tKey.intkey;
+	}
+	else if(headerPage->keyType == attrString)
+	{
+		memcpy(l_Key, tKey.charkey, strlen(tKey.charkey) + 1);
+	}
+	else
+		return MINIBASE_FIRST_ERROR(BTREE, NO_KEY_TYPE);
+
 	l_UpPageNo = newPageId;
 
 	//--- 6. delete step 5 mid entry from new page(push up) ---
@@ -2111,7 +2122,17 @@ Status BTreeFile::leafSplit(PageId pageNo, const void* key,
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
 	// weng l_Key = &tKey
-	l_Key = &tKey;
+	if(headerPage->keyType == attrInteger)
+	{
+		*(int*)l_Key = tKey.intkey;
+	}
+	else if(headerPage->keyType == attrString)
+	{
+		memcpy(l_Key, tKey.charkey, strlen(tKey.charkey) + 1);
+	}
+	else
+		return MINIBASE_FIRST_ERROR(BTREE, NO_KEY_TYPE);
+
 	l_UpPageNo = newPageId;
 
 	//--- 6. set leaf page as doubly link list ---
