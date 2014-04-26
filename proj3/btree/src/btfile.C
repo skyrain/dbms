@@ -144,11 +144,11 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
                       const int keysize)
 {
 	Status status;
-        PageId headId = INVALID_PAGE;
-        // Call DB function to open the btree file.
-        status = MINIBASE_DB->get_file_entry(filename, headId);
-        if(status != OK)
-        {	
+	PageId headId = INVALID_PAGE;
+	// Call DB function to open the btree file.
+	status = MINIBASE_DB->get_file_entry(filename, headId);
+	if(status != OK)
+	{	
 		PageId headId = INVALID_PAGE;
 		// allocate a header page by calling newPage.
 		status = MINIBASE_BM->newPage(headId, (Page *&)(this->headerPage));
@@ -189,27 +189,27 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 			returnStatus = MINIBASE_FIRST_ERROR(BTREE, ADD_FILE_ENTRY_ERROR);
 			return;
 		}
-		
-		// At last give these info to the Btfile class.
-        	// give the value to headerPageId.
-	        this->headerPageId = headId;
-        	// give the value to filename;
-	        this->filename = new char[strlen(filename) + 1];
-        	strcpy(this->filename, filename);
 
-        }else{
+		// At last give these info to the Btfile class.
+		// give the value to headerPageId.
+		this->headerPageId = headId;
+		// give the value to filename;
+		this->filename = new char[strlen(filename) + 1];
+		strcpy(this->filename, filename);
+		returnStatus = OK;
+	}else{
 		// else we pin and open the existing btree directly
-        	status = MINIBASE_BM->pinPage(headerPageId, (Page *&)(this->headerPage));
-	        if(status != OK)
-       	 	{
-                	returnStatus = MINIBASE_FIRST_ERROR(BTREE, HEADER_PIN_ERROR);
-               	 	return;
-        	}
-	        // give the value to headerPageId.
-        	this->headerPageId = headId;
-	        // give the value to filename;
-        	this->filename = new char[strlen(filename) + 1];
-	        strcpy(this->filename, filename);
+		status = MINIBASE_BM->pinPage(headerPageId, (Page *&)(this->headerPage));
+		if(status != OK)
+		{
+			returnStatus = MINIBASE_FIRST_ERROR(BTREE, HEADER_PIN_ERROR);
+			return;
+		}
+		// give the value to headerPageId.
+		this->headerPageId = headId;
+		// give the value to filename;
+		this->filename = new char[strlen(filename) + 1];
+		strcpy(this->filename, filename);
 		// Assign the index page with a given attribute type.		
 		if(keytype == attrString)
 			this->headerPage->keyType = attrString;
@@ -217,7 +217,7 @@ BTreeFile::BTreeFile (Status& returnStatus, const char *filename,
 			this->headerPage->keyType = attrInteger;
 		else // other type
 			returnStatus = MINIBASE_FIRST_ERROR(BTREE, ADD_FILE_ENTRY_ERROR);
-        	
+
 		returnStatus = OK;
 	}
 }
