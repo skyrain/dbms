@@ -288,6 +288,10 @@ Status BTreeFile::deleteSubTree(PageId pageId){
 		PageId nextId;
 		void *tmpKey = NULL;	
 	
+		// delete the leftLink at first
+		status = deleteSubTree(tmpPage->getLeftLink());
+		if(status != OK)
+			return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 		// Recursively delete the child node of certain index node.
 		status = tmpPage->get_first(tmpRid, tmpKey, nextId);
 		while(status != NOMORERECS){
