@@ -2170,16 +2170,18 @@ Status BTreeFile::leafSplit(PageId pageNo, const void* key,
 	((HFPage*)currPage)->setNextPage(newPageId);
 	((HFPage*)newPage)->setPrevPage(pageNo);
 	//--- 6.1 set new page next's prevPage as newPageId ---
-    HFPage* newPageNext;
-	status = MINIBASE_BM->pinPage(newPageNextId, (Page*&)newPageNext);
-	if(status != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+	if(newPageNextId != INVALID_PAGE)
+	{
+		HFPage* newPageNext;
+		status = MINIBASE_BM->pinPage(newPageNextId, (Page*&)newPageNext);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
-	newPageNext->setPrevPage(newPageId);
-	status = MINIBASE_BM->unpinPage(newPageNextId, true);
-	if(status != OK)
-		return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
+		newPageNext->setPrevPage(newPageId);
+		status = MINIBASE_BM->unpinPage(newPageNextId, true);
+		if(status != OK)
+			return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+	}
 	//---  unpin cur, new page ---
 	status = MINIBASE_BM->unpinPage(newPageId, true);
 	if(status != OK)
