@@ -99,8 +99,8 @@ Status SortedPage::insertRecord (AttrType key_type,
 	for(int i = 0; i < this->slotCnt; i++)
 	{
 		//--- check reach behind & swap happen in the front slot ---
-		if( i >= newSlotNo && swapFront)
-			break;
+		//if( i >= newSlotNo && swapFront)
+		//	break;
 
 		if(i < newSlotNo)
 		{
@@ -119,7 +119,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 				free(tmpData);
 				//--- compare walker key and new key ---
 				//--- check if new key smaller than walker key ---
-				if(strcmp(key.charkey, tmpKey) < 0)
+				if(keyCompare(key.charkey, tmpKey, attrString) < 0)
 				{
 					//--- first time swap: swap the new slot with others ---
 					//--- since rid is the new slot's rid, need update it --
@@ -152,7 +152,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 				free(tmpData);
 				//--- compare walker key and new key ---
 				//--- check if new key smaller than walker key ---
-				if(key.intkey < tmpKey)
+				if(keyCompare(&key.intkey, &tmpKey, attrInteger) < 0 )
 				{
 					//--- first time swap: swap the new slot with others ---
 					//--- since rid is the new slot's rid, need update it --
@@ -190,7 +190,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 				free(tmpData);
 				//--- compare walker key and new key ---
 				//--- check if new key bigger than walker key ---
-				if(strcmp(key.charkey, tmpKey) > 0)
+				if(keyCompare(key.charkey, tmpKey, attrString) > 0)
 				{
 					//--- first time swap: swap the new slot with others ---
 					//--- since rid is the new slot's rid, need update it --
@@ -223,7 +223,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 				free(tmpData);
 				//--- compare walker key and new key ---
 				//--- check if new key smaller than walker key ---
-				if(key.intkey > tmpKey)
+				if(keyCompare(&key.intkey, &tmpKey, attrInteger) > 0)
 				{
 					//--- first time swap: swap the new slot with others ---
 					//--- since rid is the new slot's rid, need update it --

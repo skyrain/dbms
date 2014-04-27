@@ -1621,28 +1621,6 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 			if(status != OK && status != NOMORERECS)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-
-//-- for test ---
-				RID _rid = tRid;
-			while(status != NOMORERECS)
-			{
-
-				RID _data;
-				Keytype _t;
-				status = ((BTLeafPage*)currPage)->get_next(_rid, 
-						&_t, _data);
-
-				cout<<_t.intkey<<endl;
-
-			}
-
-
-
-
-
-
-
-
 			//--- insert least key into left sibling ---
 			status = ((BTLeafPage*)ls)->insertRec(&tKey, 
 					headerPage->keyType, tDataRid, tmpRid);
