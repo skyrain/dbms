@@ -112,11 +112,11 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 	PageId prevPageId = INVALID_PAGE;
 	BTLeafPage *lPage = NULL;
 	lPage = (BTLeafPage *)curPage;
-	
+
 	// no page, scan finish.
 	if(curRid.pageNo == INVALID_PAGE)
 		return DONE;
-	
+
 	// if this is the first rec in the page, get the first record.
 	if(curRid.slotNo == INVALID_SLOT)
 	{
@@ -129,25 +129,25 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 		// recursively call get next until return status is DONE.
 		status = lPage->get_next(curRid, keyptr, rid);
 		if(status == NOMORERECS){
-					prevPageId = curRid.pageNo;
-	                curRid.pageNo = lPage->getNextPage();
-        	        curRid.slotNo = INVALID_SLOT;
-                	// unpin the previous page because scanner has move the next page.
-	                status = MINIBASE_BM->unpinPage(prevPageId);
-        	        if( status != OK)
-                	        return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+			prevPageId = curRid.pageNo;
+			curRid.pageNo = lPage->getNextPage();
+			curRid.slotNo = INVALID_SLOT;
+			// unpin the previous page because scanner has move the next page.
+			status = MINIBASE_BM->unpinPage(prevPageId);
+			if( status != OK)
+				return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 
-	                // if there is next Page, then pin this page into buffer pool.
-        	        if(curRid.pageNo != INVALID_PAGE){
-                	        status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
-                        	if(status != OK)
-                                	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-	                }
-	
+			// if there is next Page, then pin this page into buffer pool.
+			if(curRid.pageNo != INVALID_PAGE){
+				status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
+				if(status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+			}
+
 			return get_next(rid, keyptr);
 		}
-		
-		/* */
+
+		/* Implementation of Skipping from continues duplicate key*/
 		// Skip the duplicate record.
 		int contRes;
 		RID contRid = curRid;
@@ -156,89 +156,89 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 		//contKey = keyptr;
 		Page *tmpPage;
 		BTLeafPage *contPage = NULL;
-		
+
 		status = lPage->get_next(contRid, contKey, contERid);
 		// 1. if the continues record is in the next page.
 		if(status == NOMORERECS){
-					prevPageId = contRid.pageNo;
-	                contRid.pageNo = lPage->getNextPage();
-        	        contRid.slotNo = INVALID_SLOT;
+			prevPageId = contRid.pageNo;
+			contRid.pageNo = lPage->getNextPage();
+			contRid.slotNo = INVALID_SLOT;
 
-	                // if there is next Page, then pin this page into buffer pool.
-        	        if(contRid.pageNo != INVALID_PAGE){
-                	        status = MINIBASE_BM->pinPage(contRid.pageNo, tmpPage);
-							contPage = (BTLeafPage *)tmpPage;
-                        	if(status != OK)
-                                	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-	                }
-					
-					// isn't continues record, so just need to compare the current key with hi_key.
-					if(contRid.pageNo == INVALID_PAGE)
-					{	
-							// determine whether the key beyond the hi_key key at last.
-							int resh = 0;
-							if(hi_key != NULL){
-								resh = keyCompare(keyptr, hi_key, keyType);
-							}
-							// if hi_key is not max and there is key larger than hikey, then return DONE to finish the scan.
-							if(resh > 0){
-								status = MINIBASE_BM->unpinPage(curRid.pageNo);
-								if(status != OK)
-									return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-								curRid.pageNo = INVALID_PAGE;			
-								return DONE;
-							}
-							
-							status = MINIBASE_BM->unpinPage(curRid.pageNo);
-							if(status != OK)
-									return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
-							curRid.pageNo = INVALID_PAGE;
+			// if there is next Page, then pin this page into buffer pool.
+			if(contRid.pageNo != INVALID_PAGE){
+				status = MINIBASE_BM->pinPage(contRid.pageNo, tmpPage);
+				contPage = (BTLeafPage *)tmpPage;
+				if(status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+			}
 
-							// both case, scan is done.
-							return OK;
-					}
-	
-					// if this is the first rec in the page, get the first record.
-					if(contRid.slotNo == INVALID_SLOT)
-					{
-						status = contPage->get_first(contRid, contKey, contERid);
-						if(status != OK)
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-					}
-					
-					// compare to find a duplicate key in next page, if it is a duplicate key, skip to next key
-					contRes = keyCompare(keyptr, contKey, keyType);
-					if(contRes == 0)
-					{
-						//curRid = contRid;
-						//rid = contERid;
-						// same key, needn't to assign the value;
-						// keyptr = contKey;
-						// unpin the previous page because scanner has move the next page.
-						status = MINIBASE_BM->unpinPage(prevPageId);
-						if( status != OK)
-								return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-								
-						// change the next page to the next page.
-						curPage = tmpPage;
-						return get_next(contERid, contKey);
-					}	
-					// else 
-					// unpin the next page because scanner has to stay.
-					status = MINIBASE_BM->unpinPage(contRid.pageNo);
-					if( status != OK)   	       
-							return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-	    }
-		
+			// isn't continues record, so just need to compare the current key with hi_key.
+			if(contRid.pageNo == INVALID_PAGE)
+			{	
+				// determine whether the key beyond the hi_key key at last.
+				int resh = 0;
+				if(hi_key != NULL){
+					resh = keyCompare(keyptr, hi_key, keyType);
+				}
+				// if hi_key is not max and there is key larger than hikey, then return DONE to finish the scan.
+				if(resh > 0){
+					status = MINIBASE_BM->unpinPage(curRid.pageNo);
+					if(status != OK)
+						return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+					curRid.pageNo = INVALID_PAGE;			
+					return DONE;
+				}
+
+				status = MINIBASE_BM->unpinPage(curRid.pageNo);
+				if(status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+				curRid.pageNo = INVALID_PAGE;
+
+				// both case, scan is done.
+				return OK;
+			}
+
+			// if this is the first rec in the page, get the first record.
+			if(contRid.slotNo == INVALID_SLOT)
+			{
+				status = contPage->get_first(contRid, contKey, contERid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+			}
+
+			// compare to find a duplicate key in next page, if it is a duplicate key, skip to next key
+			contRes = keyCompare(keyptr, contKey, keyType);
+			if(contRes == 0)
+			{
+				//curRid = contRid;
+				//rid = contERid;
+				// same key, needn't to assign the value;
+				// keyptr = contKey;
+				// unpin the previous page because scanner has move the next page.
+				status = MINIBASE_BM->unpinPage(prevPageId);
+				if( status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+
+				// change the next page to the next page.
+				curPage = tmpPage;
+				return get_next(contERid, contKey);
+			}	
+			// else 
+			// unpin the next page because scanner has to stay.
+			status = MINIBASE_BM->unpinPage(contRid.pageNo);
+			if( status != OK)   	       
+				return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+		}
+
 		// 2. if the continues record in current page, compare it.
-		
+
 		// compare to find a duplicate key in current page, if it is a duplicate key, skip to next key
 		contRes = keyCompare(keyptr, contKey, keyType);
 		if(contRes == 0)
 			return get_next(contERid, contKey);		
-		/* */
+		/* End of the implementation of skipping continues key*/
 	}		
-	
+
 	// determine whether the key beyond the hi_key key at last.
 	int resh = 0;
 	if(hi_key != NULL){

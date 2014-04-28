@@ -113,7 +113,7 @@ void make_entry(KeyDataEntry *target,
 		memcpy(target, key, key_len);
 	}else if(key_type == attrString){
 		// memcpy ???
-		char *tmpkey = (char *)
+		// char *tmpkey = (char *)
 		strcpy((char *)target, (char *)key);
 	}else //other type ???
 		cout << " KeyType unknown: " << key_type << endl;

@@ -5141,13 +5141,22 @@ Scanning record with [pageNo,slotNo] = [54,55]	key = 436;
 Scanning record with [pageNo,slotNo] = [55,56]	key = 446;
 Scanning record with [pageNo,slotNo] = [56,57]	key = 450;
 Scanning record with [pageNo,slotNo] = [1000,1001]	key = 570;
+Scanning record with [pageNo,slotNo] = [1001,1002]	key = 570;
+Scanning record with [pageNo,slotNo] = [1002,1003]	key = 570;
+Scanning record with [pageNo,slotNo] = [1003,1004]	key = 570;
 Scanning record with [pageNo,slotNo] = [61,62]	key = 492;
 Scanning record with [pageNo,slotNo] = [62,63]	key = 498;
 Scanning record with [pageNo,slotNo] = [63,64]	key = 507;
 Scanning record with [pageNo,slotNo] = [1004,1005]	key = 570;
+Scanning record with [pageNo,slotNo] = [1005,1006]	key = 570;
+Scanning record with [pageNo,slotNo] = [1006,1007]	key = 570;
+Scanning record with [pageNo,slotNo] = [1007,1008]	key = 570;
+Scanning record with [pageNo,slotNo] = [1008,1009]	key = 570;
+Scanning record with [pageNo,slotNo] = [1009,1010]	key = 570;
 Scanning record with [pageNo,slotNo] = [70,71]	key = 560;
 Scanning record with [pageNo,slotNo] = [71,72]	key = 573;
 Scanning record with [pageNo,slotNo] = [1010,1011]	key = 690;
+Scanning record with [pageNo,slotNo] = [1011,1012]	key = 690;
 Scanning record with [pageNo,slotNo] = [74,75]	key = 596;
 Scanning record with [pageNo,slotNo] = [1012,1013]	key = 690;
 Scanning record with [pageNo,slotNo] = [76,77]	key = 610;
@@ -5156,6 +5165,11 @@ Scanning record with [pageNo,slotNo] = [78,79]	key = 629;
 Scanning record with [pageNo,slotNo] = [1013,1014]	key = 690;
 Scanning record with [pageNo,slotNo] = [80,81]	key = 646;
 Scanning record with [pageNo,slotNo] = [1014,1015]	key = 690;
+Scanning record with [pageNo,slotNo] = [1015,1016]	key = 690;
+Scanning record with [pageNo,slotNo] = [1016,1017]	key = 690;
+Scanning record with [pageNo,slotNo] = [1017,1018]	key = 690;
+Scanning record with [pageNo,slotNo] = [1018,1019]	key = 690;
+Scanning record with [pageNo,slotNo] = [1019,1020]	key = 690;
 Scanning record with [pageNo,slotNo] = [86,87]	key = 692;
 Scanning record with [pageNo,slotNo] = [87,88]	key = 697;
 Scanning record with [pageNo,slotNo] = [88,89]	key = 706;
@@ -5707,7 +5721,7 @@ Scanning record with [pageNo,slotNo] = [996,997]	key = 7971;
 Scanning record with [pageNo,slotNo] = [997,998]	key = 7982;
 Scanning record with [pageNo,slotNo] = [999,1000]	key = 7996;
 
-Number of records scanned = 606
+Number of records scanned = 620
 
 ------End of AllScan------
 
@@ -5757,13 +5771,22 @@ Scanning record with [pageNo,slotNo] = [54,55]	key = 436;
 Scanning record with [pageNo,slotNo] = [55,56]	key = 446;
 Scanning record with [pageNo,slotNo] = [56,57]	key = 450;
 Scanning record with [pageNo,slotNo] = [1000,1001]	key = 570;
+Scanning record with [pageNo,slotNo] = [1001,1002]	key = 570;
+Scanning record with [pageNo,slotNo] = [1002,1003]	key = 570;
+Scanning record with [pageNo,slotNo] = [1003,1004]	key = 570;
 Scanning record with [pageNo,slotNo] = [61,62]	key = 492;
 Scanning record with [pageNo,slotNo] = [62,63]	key = 498;
 Scanning record with [pageNo,slotNo] = [63,64]	key = 507;
 Scanning record with [pageNo,slotNo] = [1004,1005]	key = 570;
+Scanning record with [pageNo,slotNo] = [1005,1006]	key = 570;
+Scanning record with [pageNo,slotNo] = [1006,1007]	key = 570;
+Scanning record with [pageNo,slotNo] = [1007,1008]	key = 570;
+Scanning record with [pageNo,slotNo] = [1008,1009]	key = 570;
+Scanning record with [pageNo,slotNo] = [1009,1010]	key = 570;
 Scanning record with [pageNo,slotNo] = [70,71]	key = 560;
 Scanning record with [pageNo,slotNo] = [71,72]	key = 573;
 Scanning record with [pageNo,slotNo] = [1010,1011]	key = 690;
+Scanning record with [pageNo,slotNo] = [1011,1012]	key = 690;
 Scanning record with [pageNo,slotNo] = [74,75]	key = 596;
 Scanning record with [pageNo,slotNo] = [1012,1013]	key = 690;
 Scanning record with [pageNo,slotNo] = [76,77]	key = 610;
@@ -5772,8 +5795,13 @@ Scanning record with [pageNo,slotNo] = [78,79]	key = 629;
 Scanning record with [pageNo,slotNo] = [1013,1014]	key = 690;
 Scanning record with [pageNo,slotNo] = [80,81]	key = 646;
 Scanning record with [pageNo,slotNo] = [1014,1015]	key = 690;
+Scanning record with [pageNo,slotNo] = [1015,1016]	key = 690;
+Scanning record with [pageNo,slotNo] = [1016,1017]	key = 690;
+Scanning record with [pageNo,slotNo] = [1017,1018]	key = 690;
+Scanning record with [pageNo,slotNo] = [1018,1019]	key = 690;
+Scanning record with [pageNo,slotNo] = [1019,1020]	key = 690;
 
-Number of records scanned = 56
+Number of records scanned = 70
 
 ------End of MaxRangeScan with hikey = 690------
 
@@ -5783,13 +5811,22 @@ Number of records scanned = 56
 Start Scan!
 
 Scanning record with [pageNo,slotNo] = [1000,1001]	key = 570;
+Scanning record with [pageNo,slotNo] = [1001,1002]	key = 570;
+Scanning record with [pageNo,slotNo] = [1002,1003]	key = 570;
+Scanning record with [pageNo,slotNo] = [1003,1004]	key = 570;
 Scanning record with [pageNo,slotNo] = [61,62]	key = 492;
 Scanning record with [pageNo,slotNo] = [62,63]	key = 498;
 Scanning record with [pageNo,slotNo] = [63,64]	key = 507;
 Scanning record with [pageNo,slotNo] = [1004,1005]	key = 570;
+Scanning record with [pageNo,slotNo] = [1005,1006]	key = 570;
+Scanning record with [pageNo,slotNo] = [1006,1007]	key = 570;
+Scanning record with [pageNo,slotNo] = [1007,1008]	key = 570;
+Scanning record with [pageNo,slotNo] = [1008,1009]	key = 570;
+Scanning record with [pageNo,slotNo] = [1009,1010]	key = 570;
 Scanning record with [pageNo,slotNo] = [70,71]	key = 560;
 Scanning record with [pageNo,slotNo] = [71,72]	key = 573;
 Scanning record with [pageNo,slotNo] = [1010,1011]	key = 690;
+Scanning record with [pageNo,slotNo] = [1011,1012]	key = 690;
 Scanning record with [pageNo,slotNo] = [74,75]	key = 596;
 Scanning record with [pageNo,slotNo] = [1012,1013]	key = 690;
 Scanning record with [pageNo,slotNo] = [76,77]	key = 610;
@@ -5798,6 +5835,11 @@ Scanning record with [pageNo,slotNo] = [78,79]	key = 629;
 Scanning record with [pageNo,slotNo] = [1013,1014]	key = 690;
 Scanning record with [pageNo,slotNo] = [80,81]	key = 646;
 Scanning record with [pageNo,slotNo] = [1014,1015]	key = 690;
+Scanning record with [pageNo,slotNo] = [1015,1016]	key = 690;
+Scanning record with [pageNo,slotNo] = [1016,1017]	key = 690;
+Scanning record with [pageNo,slotNo] = [1017,1018]	key = 690;
+Scanning record with [pageNo,slotNo] = [1018,1019]	key = 690;
+Scanning record with [pageNo,slotNo] = [1019,1020]	key = 690;
 Scanning record with [pageNo,slotNo] = [86,87]	key = 692;
 Scanning record with [pageNo,slotNo] = [87,88]	key = 697;
 Scanning record with [pageNo,slotNo] = [88,89]	key = 706;
@@ -6349,7 +6391,7 @@ Scanning record with [pageNo,slotNo] = [996,997]	key = 7971;
 Scanning record with [pageNo,slotNo] = [997,998]	key = 7982;
 Scanning record with [pageNo,slotNo] = [999,1000]	key = 7996;
 
-Number of records scanned = 566
+Number of records scanned = 580
 
 ------End of MinRangeScan with lokey = 570------
 
@@ -6359,6 +6401,7 @@ Number of records scanned = 566
 Start Scan!
 
 Scanning record with [pageNo,slotNo] = [1010,1011]	key = 690;
+Scanning record with [pageNo,slotNo] = [1011,1012]	key = 690;
 Scanning record with [pageNo,slotNo] = [74,75]	key = 596;
 Scanning record with [pageNo,slotNo] = [1012,1013]	key = 690;
 Scanning record with [pageNo,slotNo] = [76,77]	key = 610;
@@ -6367,8 +6410,13 @@ Scanning record with [pageNo,slotNo] = [78,79]	key = 629;
 Scanning record with [pageNo,slotNo] = [1013,1014]	key = 690;
 Scanning record with [pageNo,slotNo] = [80,81]	key = 646;
 Scanning record with [pageNo,slotNo] = [1014,1015]	key = 690;
+Scanning record with [pageNo,slotNo] = [1015,1016]	key = 690;
+Scanning record with [pageNo,slotNo] = [1016,1017]	key = 690;
+Scanning record with [pageNo,slotNo] = [1017,1018]	key = 690;
+Scanning record with [pageNo,slotNo] = [1018,1019]	key = 690;
+Scanning record with [pageNo,slotNo] = [1019,1020]	key = 690;
 
-Number of records scanned = 9
+Number of records scanned = 15
 
 ------End of ExactMatch with key = 690-------
 
@@ -6376,13 +6424,22 @@ Number of records scanned = 9
 ------Start MinMaxRangeScan with lokey = 570 hikey = 690------
 Will also perform delete_current()
 Record with [pageNo,slotNo] = [1000,1001] deleted
+Record with [pageNo,slotNo] = [1001,1002] deleted
+Record with [pageNo,slotNo] = [1002,1003] deleted
+Record with [pageNo,slotNo] = [1003,1004] deleted
 Record with [pageNo,slotNo] = [61,62] deleted
 Record with [pageNo,slotNo] = [62,63] deleted
 Record with [pageNo,slotNo] = [63,64] deleted
 Record with [pageNo,slotNo] = [1004,1005] deleted
+Record with [pageNo,slotNo] = [1005,1006] deleted
+Record with [pageNo,slotNo] = [1006,1007] deleted
+Record with [pageNo,slotNo] = [1007,1008] deleted
+Record with [pageNo,slotNo] = [1008,1009] deleted
+Record with [pageNo,slotNo] = [1009,1010] deleted
 Record with [pageNo,slotNo] = [70,71] deleted
 Record with [pageNo,slotNo] = [71,72] deleted
 Record with [pageNo,slotNo] = [1010,1011] deleted
+Record with [pageNo,slotNo] = [1011,1012] deleted
 Record with [pageNo,slotNo] = [74,75] deleted
 Record with [pageNo,slotNo] = [1012,1013] deleted
 Record with [pageNo,slotNo] = [76,77] deleted
@@ -6391,7 +6448,12 @@ Record with [pageNo,slotNo] = [78,79] deleted
 Record with [pageNo,slotNo] = [1013,1014] deleted
 Record with [pageNo,slotNo] = [80,81] deleted
 Record with [pageNo,slotNo] = [1014,1015] deleted
-Number of records scanned = 16
+Record with [pageNo,slotNo] = [1015,1016] deleted
+Record with [pageNo,slotNo] = [1016,1017] deleted
+Record with [pageNo,slotNo] = [1017,1018] deleted
+Record with [pageNo,slotNo] = [1018,1019] deleted
+Record with [pageNo,slotNo] = [1019,1020] deleted
+Number of records scanned = 30
 
 ------End of MinMaxRangeScan -----------------------
 

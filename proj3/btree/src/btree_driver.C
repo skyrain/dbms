@@ -663,6 +663,8 @@ cout << " key " << values[i].key
 	    cout << "[" << values[i].r.pageNo<<","
                  << values[i].r.slotNo << "]" <<endl;
 */
+	if(values[i].key == 690|| values[i].key == 570)
+			cout << "Deleted  " << i << "  records " << values[i].key <<endl;
 	    if (btf->Delete(&values[i].key, values[i].r) != OK) {
 	       minibase_errors.show_errors();
 	    }
