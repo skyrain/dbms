@@ -614,32 +614,18 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			//--- if left sibling has space --
 			//--- get end entry of left sibling & ---
 			//---inset into uPage to replace lKey --- 
-			//--- get end entry of left sibling ---
-			status = ((BTIndexPage*)ls)->get_first(tRid, &tKey, tPageNo);
+			//--- get first entry of currpage ---
+			status = ((BTIndexPage*)currPage)->get_first(tRid, &tKey, tPageNo);
 			if(status != OK && status != NOMORERECS)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			//--- ?? should use memcpy ---
-			Keytype endKey = tKey;
-
-			while(true)
-			{
-				status = ((BTIndexPage*)ls)->get_next(tRid, &tKey, tPageNo);
-				if(status != OK && status != NOMORERECS)
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-				if(status == NOMORERECS)
-					break;
-
-				endKey = tKey;
-			}
-			//--- push up end entry into uPage --- 
+			//--- push up currPage least entry into uPage --- 
 			status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
 					headerPage->keyType, tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			status = ((BTIndexPage *)uPage)->insertKey(&endKey, 
+			status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
 					headerPage->keyType, pageNo, tmpRid);
 			if(status != OK && status == DONE)
 			{
@@ -656,15 +642,23 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 						headerPage->keyType, tmpRid);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
-
+//????
+				/*
 				status = MINIBASE_BM->unpinPage(lsibling, true);
 				if(status != OK)
-					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+*/					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+			status = ((BTIndexPage *)currPage)->deleteKey(&lKey,
+					headerPage->keyType, tmpRid);
+			if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+
 		}
 		else //--- insert pageNo least key into left sibling & uPage &
 			//--- delete itself ---
@@ -1559,33 +1553,18 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 			//--- get end entry of left sibling & ---
 			//---inset into uPage to replace lKey --- 
 			//--- get end entry of left sibling ---
-			status = ((BTLeafPage*)ls)->get_first(tRid, 
+			status = ((BTLeafPage*)currPage)->get_first(tRid, 
 					&tKey, tDataRid);
 			if(status != OK && status != NOMORERECS)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			//--- ?? should use memcpy ---
-			Keytype endKey = tKey;
-
-			while(true)
-			{
-				status = ((BTLeafPage*)ls)->get_next(tRid, &tKey, 
-						tDataRid);
-				if(status != OK && status != NOMORERECS)
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-				if(status == NOMORERECS)
-					break;
-
-				endKey = tKey;
-			}
-			//--- push up end entry into uPage --- 
+			//--- copy up currPage least entry into uPage --- 
 			status = ((BTIndexPage *)uPage)->deleteKey(&lKey,
 					headerPage->keyType, tRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			status = ((BTIndexPage *)uPage)->insertKey(&endKey, 
+			status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
 					headerPage->keyType, pageNo, tmpRid);
 			if(status != OK && status == DONE)
 			{
@@ -1648,17 +1627,10 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			//--- insert second least key into uPage ---
-			Keytype secondLeastKey;
-			RID _tRid = tRid;
-			RID _tDataRid;
-			status = ((BTLeafPage*)currPage)->get_first(_tRid, 
-					&secondLeastKey, _tDataRid);
-			if(status != OK && status != NOMORERECS)
-				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			status = ((BTIndexPage *)uPage)->insertKey(&secondLeastKey, 
-					headerPage->keyType, pageNo, ttRid);
+			//--- insert new entry into pageNo page ---
+			status = ((BTLeafPage*)currPage)->insertRec(key, 
+					headerPage->keyType, rid, ttRid);
 			if(status != OK && status == DONE)
 			{
 				lRedi  = false;
@@ -1684,23 +1656,28 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
-				return status;
 
+				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
+			
+			//--- insert second least key into uPage ---
+			Keytype secondLeastKey;
+			RID _tRid = tRid;
+			RID _tDataRid;
+			status = ((BTLeafPage*)currPage)->get_first(_tRid, 
+					&secondLeastKey, _tDataRid);
+			if(status != OK && status != NOMORERECS)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			//--- insert new entry into pageNo page ---
-			status = ((BTLeafPage*)currPage)->insertRec(key, 
-					headerPage->keyType, rid, ttRid);
+			status = ((BTIndexPage *)uPage)->insertKey(&secondLeastKey, 
+					headerPage->keyType, pageNo, ttRid);
 			if(status != OK && status == DONE)
 			{
 				lRedi  = false;
-				//--- roll back ---
-
-				//--- a "insert least key into uPage "---
-				status = ((BTIndexPage *)uPage)->deleteKey(&secondLeastKey,
-						headerPage->keyType, ttRid);
+				//--- a. roll back "insert new entry into pageNo page" ---
+				status = ((BTLeafPage *)currPage)->deleteRecord(ttRid);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -1726,9 +1703,11 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 				return status;
+
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
 		}
 
 		//--- unpin cur, left sbiling ---
