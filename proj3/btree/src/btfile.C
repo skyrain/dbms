@@ -622,7 +622,8 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			//--- insert uPage lKey into left sibling ---
 			RID TmpRid;
 			status = ((BTIndexPage *)ls)->insertKey(&lKey, 
-					headerPage->keyType, currPage->getLeftLink(), TmpRid);
+					headerPage->keyType, 
+					((BTIndexPage*)currPage)->getLeftLink(), TmpRid);
 			if(status != OK && status == DONE)
 			{
 				lRedi = false;
@@ -654,14 +655,19 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			{
 				lRedi = false;
 				//--- reverse change ---
-				//????
-				//--- a. reverse uPage ---
+				//--- a."insert uPage lKey into left sibling"  ---
+				status = ((BTIndexPage *)ls)->deleteKey(&lKey,
+						headerPage->keyType, tmpRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//--- b. reverse uPage ---
 				status = ((BTIndexPage *)uPage)->insertKey(&lKey,
 						headerPage->keyType, pageNo, tmpRid);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-				//--- b. reverse ls page ---
+				//--- c. reverse ls page ---
 				status = ((BTIndexPage *)ls)->deleteKey(&lowerKey,
 						headerPage->keyType, tmpRid);
 				if(status != OK)
@@ -682,6 +688,7 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- set left link ---
+			//????
 		}
 		else //--- insert pageNo least key into left sibling & uPage &
 			//--- delete itself ---
