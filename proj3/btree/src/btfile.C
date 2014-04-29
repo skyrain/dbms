@@ -442,11 +442,8 @@ Status BTreeFile::indexRootSplit(PageId pageNo,
 	status = ((BTIndexPage*)rootPage)->insertKey(&tKey, headerPage->keyType, 
 			newPageId, tRid);
 	//--- if insertKey() returns NO_SPACE ---
-	//--- ?? can catch this NO_SPACE ---
 	if(status != OK && status != DONE)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
-	
-	//???处理 status == DONE的情�?
 	
 	//--- 6. delete step 5 mid entry from new page(push up) ---
 	status = ((BTIndexPage*)newPage)->get_first(tRid, &tKey, tPageNo);
@@ -612,9 +609,6 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- if left sibling has space --
-			//--- get end entry of left sibling & ---
-			//---inset into uPage to replace lKey --- 
-			//--- get first entry of currpage ---
 			status = ((BTIndexPage*)currPage)->get_first(tRid, &tKey, tPageNo);
 			if(status != OK && status != NOMORERECS)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -625,12 +619,42 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
+			//--- insert uPage lKey into left sibling ---
+			RID TmpRid;
+			status = ((BTIndexPage *)ls)->insertKey(&lKey, 
+					headerPage->keyType, currPage->getLeftLink(), TmpRid);
+			if(status != OK && status == DONE)
+			{
+				lRedi = false;
+				//--- roll back ---
+				//--- a. "delete uPage revious lKey" ---
+				status = ((BTIndexPage *)uPage)->insertKey(&lKey, 
+					headerPage->keyType, pageNo, tmpRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+				//---b "delete ls inserted lowerKey" ---
+				status = ((BTIndexPage *)ls)->deleteKey(&lowerKey, 
+					headerPage->keyType, tmpRid);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+			
+				status = MINIBASE_BM->unpinPage(lsibling, true);
+				if(status != OK)
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+				return status;
+			}
+			else if(status != OK)
+				return MINIBASE_CHAIN_ERROR(BTREE, status);
+
 			status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
 					headerPage->keyType, pageNo, tmpRid);
 			if(status != OK && status == DONE)
 			{
 				lRedi = false;
 				//--- reverse change ---
+				//????
 				//--- a. reverse uPage ---
 				status = ((BTIndexPage *)uPage)->insertKey(&lKey,
 						headerPage->keyType, pageNo, tmpRid);
@@ -642,23 +666,22 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 						headerPage->keyType, tmpRid);
 				if(status != OK)
 					return MINIBASE_CHAIN_ERROR(BTREE, status);
-//????
-				/*
+				
 				status = MINIBASE_BM->unpinPage(lsibling, true);
 				if(status != OK)
-*/					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+					return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
 				return status;
 			}
 			else if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-			status = ((BTIndexPage *)currPage)->deleteKey(&lKey,
+			status = ((BTIndexPage *)currPage)->deleteKey(&tKey,
 					headerPage->keyType, tmpRid);
 			if(status != OK)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-
+			//--- set left link ---
 		}
 		else //--- insert pageNo least key into left sibling & uPage &
 			//--- delete itself ---
@@ -1380,7 +1403,8 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 			return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 	}
 
-	//--- 5. insert mid entry(first entry in new page) to root page ---
+	//--- 5. copy up --
+	//---  insert mid entry(first entry in new page) to root page ---
 	status = ((BTLeafPage*)newPage)->get_first(tRid, &tKey, tDataRid);
 	if(status != OK)
 		return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -1388,12 +1412,9 @@ Status BTreeFile::leafRootSplit(PageId pageNo, const void * key,
 	status = ((BTIndexPage*)rootPage)->insertKey(&tKey, 
 			headerPage->keyType, newPageId, tRid);
 	//--- if insertKey() returns NO_SPACE ---
-	//--- ?? can catch this NO_SPACE ---
 	if(status != OK && status != DONE)
 		return MINIBASE_FIRST_ERROR(BTREE, INSERT_FAILED);
 	
-	//???处理 status == DONE的情�?
-
 	//---6. set root page left link ---
 	((BTIndexPage*)rootPage)->setLeftLink(pageNo);
 
@@ -1550,9 +1571,6 @@ Status BTreeFile::leafLeftRedistribution(PageId pageNo, const void* key,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			//--- if left sibling has space --
-			//--- get end entry of left sibling & ---
-			//---inset into uPage to replace lKey --- 
-			//--- get end entry of left sibling ---
 			status = ((BTLeafPage*)currPage)->get_first(tRid, 
 					&tKey, tDataRid);
 			if(status != OK && status != NOMORERECS)
@@ -1856,7 +1874,7 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 		endKey = tKey;
 		endRid = tDataRid;
 	}
-	//--- compare lower key with endKey of currPage ---
+	//--- compare key with endKey of currPage ---
 	if(keyCompare(key, &endKey,
 				headerPage->keyType) < 0) // lower key smaller
 	{
@@ -1910,7 +1928,7 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 		RID ttRid;
-		//--- push up end entry into uPage --- 
+		//--- copy up end entry into uPage --- 
 		status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
 				headerPage->keyType, ttRid);
 		if(status != OK)
@@ -1953,9 +1971,9 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 		else if(status != OK)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
 	}
-	else //--- lower key biggest 
+	else //--- key bigger than end key of currPage -- 
 	{
-		//--- insert lowerKey into right sibling ---
+		//--- insert key into right sibling ---
 		status = ((BTLeafPage*)rs)->insertRec(key, 
 				headerPage->keyType, rid, tmpRid);
 
@@ -1973,7 +1991,7 @@ Status BTreeFile::leafRightRedistribution(PageId pageNo, const void* key,
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 		//--- if right sibling has space --
-		//--- push up end entry into uPage --- 
+		//--- copy up least entry of rsibing into uPage --- 
 		RID ttRid;
 		status = ((BTIndexPage *)uPage)->deleteKey(&rKey,
 				headerPage->keyType, ttRid);
