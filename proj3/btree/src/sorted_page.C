@@ -248,6 +248,12 @@ Status SortedPage::insertRecord (AttrType key_type,
 		}
 	}
 
+	if(*(int*)recPtr == 570 || *(int*)recPtr == 690)
+	{
+		//cout current inserted rid
+		cout<<"haha "<<rid.pageNo<<" "<<rid.slotNo<<endl;
+	}
+
 	return OK;
 }
 

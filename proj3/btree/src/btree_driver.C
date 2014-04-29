@@ -641,15 +641,14 @@ cout << " key " << values[i].key
     for (i=0; i < num; i++){
         //cout << " Inserting key " << values[i].key << " order " 
              //<< values[i].sort_value1 << endl;
-       	if (btf->insert(&(values[i].key), values[i].r) != OK) {
+		
+		if (btf->insert(&(values[i].key), values[i].r) != OK) {
             minibase_errors.show_errors();
         }
     }
     cout << "\n------ End of insert------" << endl;
 
-   
-
-    // test delete()
+	// test delete()
     cout << "\n\n------ Delete the first " << num_deletes 
          << " of the records-----" << endl;
 
@@ -672,6 +671,21 @@ cout << " key " << values[i].key
     cout << "Deleted  " << i << "  records " << endl;
     cout << "\n------ End of delete ------" << endl;
 
+
+
+//--- for test ---	
+     //AllScan
+    scan = btf->new_scan(NULL,NULL);
+    cout << "\n\n------for test original ------" << endl;
+
+    test_scan(scan);
+    delete scan;   
+//--- for test end ---
+
+
+
+
+
     delete btf;
 
     btf = new BTreeFile(status, "BTreeIndex");
@@ -691,7 +705,19 @@ cout << " key " << values[i].key
         i++;
     }
 
-    //AllScan
+//--- for test ---	
+     //AllScan
+    scan = btf->new_scan(NULL,NULL);
+    cout << "\n\n------for test 3 ------" << endl;
+
+    test_scan(scan);
+    delete scan;   
+//--- for test end ---
+
+
+	
+	
+	//AllScan
     scan = btf->new_scan(NULL,NULL);
     cout << "\n\n------Start AllScan------" << endl;
 
