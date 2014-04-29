@@ -41,7 +41,10 @@ class HFPage {
 
     PageId    prevPage;    // backward pointer to data page
     PageId    nextPage;    // forward pointer to data page
-    PageId    curPage;     // page number of this page
+    
+	//-- for test ---
+  public:
+	PageId    curPage;     // page number of this page
 
 	//--- for debug
 public:

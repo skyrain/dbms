@@ -177,7 +177,10 @@ Status SortedPage::insertRecord (AttrType key_type,
 		{
 			//--- check if slot is empty ---
 			if(slot[j].offset == INVALID_SLOT || slot[j].length == EMPTY_SLOT)
+			{  
+				j--;
 				continue;
+			}
 
 			//--- retrieve walker slot's key ---
 			char* tmpData = (char* )calloc(1, sizeof(char) * slot[j].length);
@@ -247,13 +250,7 @@ Status SortedPage::insertRecord (AttrType key_type,
 
 		}
 	}
-
-	if(*(int*)recPtr == 570 || *(int*)recPtr == 690)
-	{
-		//cout current inserted rid
-		cout<<"haha "<<rid.pageNo<<" "<<rid.slotNo<<endl;
-	}
-
+	
 	return OK;
 }
 

@@ -599,7 +599,7 @@ void BTreeTest::test4() {
     int key, lokey, hikey;
     RID rid;
     int num = 1000;
-    int num_deletes = 400;
+    int num_deletes =  400;
     int i;
     dummy values[num];
 
@@ -662,7 +662,7 @@ cout << " key " << values[i].key
 	    cout << "[" << values[i].r.pageNo<<","
                  << values[i].r.slotNo << "]" <<endl;
 */
-	if(values[i].key == 690|| values[i].key == 570)
+		if(values[i].key == 690|| values[i].key == 570)
 			cout << "Deleted  " << i << "  records " << values[i].key <<endl;
 	    if (btf->Delete(&values[i].key, values[i].r) != OK) {
 	       minibase_errors.show_errors();
@@ -670,21 +670,6 @@ cout << " key " << values[i].key
     }
     cout << "Deleted  " << i << "  records " << endl;
     cout << "\n------ End of delete ------" << endl;
-
-
-
-//--- for test ---	
-     //AllScan
-    scan = btf->new_scan(NULL,NULL);
-    cout << "\n\n------for test original ------" << endl;
-
-    test_scan(scan);
-    delete scan;   
-//--- for test end ---
-
-
-
-
 
     delete btf;
 
@@ -704,18 +689,6 @@ cout << " key " << values[i].key
 		minibase_errors.show_errors();
         i++;
     }
-
-//--- for test ---	
-     //AllScan
-    scan = btf->new_scan(NULL,NULL);
-    cout << "\n\n------for test 3 ------" << endl;
-
-    test_scan(scan);
-    delete scan;   
-//--- for test end ---
-
-
-	
 	
 	//AllScan
     scan = btf->new_scan(NULL,NULL);
