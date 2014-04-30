@@ -698,7 +698,7 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			status = ((BTIndexPage *)ls)->insertKey(&lKey, 
 					headerPage->keyType, 
 					((BTIndexPage*)currPage)->getLeftLink(), tmpRid);
-			if(status != OK && status != NOMORERECS)
+			if(status != OK && status != DONE)
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 
 			if(status != OK && status == DONE)
@@ -748,7 +748,7 @@ Status BTreeFile::indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 				return MINIBASE_CHAIN_ERROR(BTREE, status);
 			
 			//--- insert old least key of pageNo page into uPage ---
-			status = ((BTIndexPage *)ls)->insertKey(&tKey, 
+			status = ((BTIndexPage *)uPage)->insertKey(&tKey, 
 					headerPage->keyType, pageNo, tmpRid);
 			if(status != OK && status == DONE)
 			{
@@ -1044,7 +1044,7 @@ Status BTreeFile::indexRightRedistribution(PageId pageNo, const Keytype lowerKey
 		//--- insert rKey into rsibling ---
 		status = ((BTIndexPage *)rs)->insertKey(&rKey, 
 				headerPage->keyType,
-				((BTIndexPage*)currPage)->getLeftLink(), tmpRid);
+				((BTIndexPage*)rs)->getLeftLink(), tmpRid);
 		if(status != OK && status == DONE)
 		{
 			rRedi  = false;
