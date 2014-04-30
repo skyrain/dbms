@@ -98,7 +98,7 @@ BTreeFileScan::~BTreeFileScan()
 	// unpin the current page.
 	if(curPage != NULL){
 		PageId curPageId = curRid.pageNo;
-		status = MINIBASE_BM->unpinPage(curPageId);
+		status = MINIBASE_BM->unpinPage(curPageId, true);
 		if(status != OK)
 			MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	}
@@ -133,7 +133,7 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 			curRid.pageNo = lPage->getNextPage();
 			curRid.slotNo = INVALID_SLOT;
 			// unpin the previous page because scanner has move the next page.
-			status = MINIBASE_BM->unpinPage(prevPageId);
+			status = MINIBASE_BM->unpinPage(prevPageId, true);
 			if( status != OK)
 				return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 
@@ -182,14 +182,14 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 				}
 				// if hi_key is not max and there is key larger than hikey, then return DONE to finish the scan.
 				if(resh > 0){
-					status = MINIBASE_BM->unpinPage(curRid.pageNo);
+					status = MINIBASE_BM->unpinPage(curRid.pageNo, true);
 					if(status != OK)
 						return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 					curRid.pageNo = INVALID_PAGE;			
 					return DONE;
 				}
 
-				status = MINIBASE_BM->unpinPage(curRid.pageNo);
+				status = MINIBASE_BM->unpinPage(curRid.pageNo, true);
 				if(status != OK)
 					return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 				curRid.pageNo = INVALID_PAGE;
@@ -215,7 +215,7 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 				// same key, needn't to assign the value;
 				// keyptr = contKey;
 				// unpin the previous page because scanner has move the next page.
-				status = MINIBASE_BM->unpinPage(prevPageId);
+				status = MINIBASE_BM->unpinPage(prevPageId, true);
 				if( status != OK)
 					return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 
@@ -225,7 +225,7 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 			}	
 			// else 
 			// unpin the next page because scanner has to stay.
-			status = MINIBASE_BM->unpinPage(contRid.pageNo);
+			status = MINIBASE_BM->unpinPage(contRid.pageNo, true);
 			if( status != OK)   	       
 				return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 		}
@@ -246,7 +246,7 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 	}
 	// if hi_key is not max and there is key larger than hikey, then return DONE to finish the scan.
 	if(resh > 0){
-		status = MINIBASE_BM->unpinPage(curRid.pageNo);
+		status = MINIBASE_BM->unpinPage(curRid.pageNo, true);
 		if(status != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 		curRid.pageNo = INVALID_PAGE;
@@ -281,7 +281,7 @@ Status BTreeFileScan::delete_current()
 		curRid.pageNo = lPage->getNextPage();
 		curRid.slotNo = INVALID_SLOT;
 		// unpin the previous page because scanner has move the next page.
-		status = MINIBASE_BM->unpinPage(prevPageId);
+		status = MINIBASE_BM->unpinPage(prevPageId, true);
 		if( status != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 
@@ -337,7 +337,7 @@ Status BTreeFileScan::fromLeftMostPage(PageId pageid)
 			return MINIBASE_FIRST_ERROR(BTREE, NO_LEAF_NODE);
 		
 		// unpin the current page;
-		status = MINIBASE_BM->unpinPage(pageid);
+		status = MINIBASE_BM->unpinPage(pageid, true);
 		if(status != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	} 
@@ -380,7 +380,7 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 	if(type == INDEX){
 		// if this is a index, them find the child node of given low key by calling get_page_no.
 		tmpIPage->get_page_no(lo_key, keyType, tmpId);
-		status = MINIBASE_BM->unpinPage(pageid);
+		status = MINIBASE_BM->unpinPage(pageid, true);
 		if(status != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 		// recursively call fromLowPage if it is still an index.
@@ -410,7 +410,7 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		                        curRid.pageNo = tmpLPage->getNextPage();
         		                curRid.slotNo = INVALID_SLOT;
                 		        // unpin the previous page because scanner has move the next page.
-                        		status = MINIBASE_BM->unpinPage(tmpId);
+                        		status = MINIBASE_BM->unpinPage(tmpId, true);
 	                        	if( status != OK)
         	                        	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
 	

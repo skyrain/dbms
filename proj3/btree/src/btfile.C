@@ -254,7 +254,7 @@ Status BTreeFile::destroyFile ()
 	PageId headId = INVALID_PAGE;
 	headId = this->headerPageId;
 	// unpin and free the header page.
-	status = MINIBASE_BM->unpinPage(headId);
+	status = MINIBASE_BM->unpinPage(headId, true);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	
@@ -303,7 +303,7 @@ Status BTreeFile::deleteSubTree(PageId pageId){
 	}
 
 	// unpin and free the page at last.
-	status = MINIBASE_BM->unpinPage(pageId);
+	status = MINIBASE_BM->unpinPage(pageId, true);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	
@@ -2523,7 +2523,7 @@ Status BTreeFile::deleteHelper(const void *key, const RID rid, PageId pageNo)
 	}
 
 	// unpin the searching page at end.
-	status = MINIBASE_BM->unpinPage(pageNo);
+	status = MINIBASE_BM->unpinPage(pageNo, true);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 

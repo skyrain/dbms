@@ -178,7 +178,7 @@ int key;
     dummy kill[num];
     for (i = 0; i < num; i++) {
         rid.pageNo = i; rid.slotNo = i+1;
-	key = i;// num - i; 
+	key =  num - i; 
 	  kill[i].r.pageNo = rid.pageNo;
 	  kill[i].r.slotNo = rid.slotNo;
 	  kill[i].key = key;
