@@ -61,7 +61,7 @@ class BufMgr {
 
 	private: 
 		unsigned int    numBuffers;
-		BufDescr bufDescr[NUMBUF];	
+//		BufDescr bufDescr[NUMBUF];	
 		HashTable *hashTable;
 		ReplaceList* LRU;
 		ReplaceList* MRU;
@@ -82,6 +82,7 @@ class BufMgr {
 		//--- changed to valid value after execution)--
 		Status hashGetFrameId(PageId pageId, int& frameId);
 	public:
+BufDescr bufDescr[NUMBUF];// for test	
 		Page* bufPool; // The actual buffer pool
 		
 		//--- initialize: 1. bufDescr[]; 2.hashtable; ---

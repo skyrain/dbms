@@ -121,8 +121,28 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 	if(curRid.slotNo == INVALID_SLOT)
 	{
 		status = lPage->get_first(curRid, keyptr, rid);
-		if(status != OK)
+		if(status != OK && status != NOMORERECS)
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
+		if(status == NOMORERECS)
+		{
+			prevPageId = curRid.pageNo;
+			curRid.pageNo = lPage->getNextPage();
+			curRid.slotNo = INVALID_SLOT;
+			// unpin the previous page because scanner has move the next page.
+			status = MINIBASE_BM->unpinPage(prevPageId, true);
+			if( status != OK)
+				return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+
+			// if there is next Page, then pin this page into buffer pool.
+			if(curRid.pageNo != INVALID_PAGE){
+				status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
+				if(status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+			}
+
+			return get_next(rid, keyptr);
+
+		}
 	}
 	else
 	{
