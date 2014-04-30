@@ -69,10 +69,12 @@ sortMerge::sortMerge(
 		// Sorted file name.
 		char *sorted1 = "out1";
 		char *sorted2 = "out2";
+
 		// Record length of relation R and S
 		int recLenR = 0;
 		int recLenS = 0;
 		int recLenM = 0;
+		// calculate the record length by, adding each of column in R and S for every array containing size of columns in R and S.
 		int i;
 		for(i = 0; i < len_in1; i++)
 			recLenS += t1_str_sizes[i];
@@ -82,12 +84,12 @@ sortMerge::sortMerge(
 		recLenM = recLenS + recLenR;
 		
 		// Call sort to sort the relation filename1 and filename2,  save the sorted file.
-		Sort(filename1,  sorted1, len_in1, in1,  t1_str_sizes,  join_col_in1,  order,  amt_of_mem, s);
+		Sort(filename1, sorted1, len_in1, in1,  t1_str_sizes,  join_col_in1,  order,  amt_of_mem, s);
 		Sort(filename2, sorted2, len_in2, in2,  t2_str_sizes,  join_col_in2,  order,  amt_of_mem, s);
 		if(s != OK)
 			MINIBASE_FIRST_ERROR(JOINS,  SORT_FAILED);
 		
-		// Build up three heapfile,  two of them are relation S.
+		// Build up three heapfile, two of them are relation S.
 		HeapFile* heapfileR = new HeapFile(sorted1, s);
 		HeapFile* heapfileS1 = new HeapFile(sorted2, s);
 		HeapFile* heapfileS2 = new HeapFile(sorted2, s);
@@ -95,7 +97,7 @@ sortMerge::sortMerge(
 		if(s != OK)
 			MINIBASE_FIRST_ERROR(JOINS,  HEAPFILE_FAILED);
 		
-		// Open there scan for heapfile R adn S.
+		// Open three scan for heapfile R and S.
 		Status statusR, statusS1, statusS2;
 		Scan* scanR = heapfileR->openScan(statusR);
 		Scan* scanS1 = heapfileS1->openScan(statusS1);
@@ -116,6 +118,9 @@ sortMerge::sortMerge(
 		RID mergeRid;
 		
 		// the outer loop will determine whehter there is record in R or S.
+		// End the merge when one of the relation is scaned.
+		// Inner loop will do a Cartesian product on the tuple that R and S have the same value.
+		// Since all the tuples are sorted in R and S, so only check the adjacent tuple.
 		while( statusR == OK && statusS2 == OK)
 		{
 			int res = 0;
@@ -170,7 +175,7 @@ sortMerge::sortMerge(
 					break;
 				scanS1 -> position(rid_S2);
 				
-				// move the pointer ahead in repaltion S,  if record in S and R still equal. the merge will continue.
+				// move the pointer ahead in relation S, if record in S and R still equal. the merge will continue.
 				statusS1 = scanS1 -> getNext(ridS1, recS1_ptr, len_S1);	
 				if(statusS1 != OK)
 					break;
