@@ -77,7 +77,7 @@ BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int
 
 	
 	
-	tatus status;
+	Status status;
 	// if assign lo_key = NULL, start from the left most page.
 	if(l != NULL && h != NULL)
 	{	
