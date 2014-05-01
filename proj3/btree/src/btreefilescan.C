@@ -77,19 +77,34 @@ BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int
 
 	
 	
-	Status status;
+	tatus status;
 	// if assign lo_key = NULL, start from the left most page.
-	if(lo_key == NULL)
+	if(l != NULL && h != NULL)
 	{	
+		if(*(int*)l > *(int*)h)
+					curRid.pageNo = INVALID_PAGE;
+		
+	}else if(l != NULL){
+			// largest key "50000" number should pass down by btfile
+			if(*(int*)l >= 50000)
+				curRid.pageNo = INVALID_PAGE;	
+			else{
+				// start from the given low key.
+				status = fromLowPage(rootPageId);
+				if(status != OK)
+					curRid.pageNo = INVALID_PAGE;
+			}
+	}
+	else if(h != NULL)	
+	{
+				// smallest key "0" number should pass down by btfile
+				if(*(int*)h <= 0)
+					curRid.pageNo = INVALID_PAGE;			
+	}else{
 		status = fromLeftMostPage(rootPageId);
 		if(status != OK)
 			curRid.pageNo = INVALID_PAGE;
-	}else{	
-		// start from the given low key.
-		status = fromLowPage(rootPageId);
-		if(status != OK)
-			curRid.pageNo = INVALID_PAGE;	
-	}
+	}	
 }
 
 // Deconstructor of BTreeFileScan.
@@ -97,8 +112,8 @@ BTreeFileScan::~BTreeFileScan()
 {
 	Status status;
 	// unpin the current page.
-	if(curPage != NULL){
-		PageId curPageId = curRid.pageNo;
+			PageId curPageId = curRid.pageNo;
+		if(curPageId != INVALID_PAGE){
 		status = MINIBASE_BM->unpinPage(curPageId, true);
 		if(status != OK)
 			MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
@@ -422,10 +437,24 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		if(status != OK && status != NOMORERECS)	
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
 		
-		//if(status == NOMORERECS){
-		//	curPage = tmpPage;
-		//	curRid.pageNo = pageid;
-		//}
+		/*if(status == NOMORERECS){
+			 tmpId = curRid.pageNo;
+			 curRid.pageNo = tmpLPage->getNextPage();
+        		 curRid.slotNo = INVALID_SLOT;
+			 // unpin the previous page because scanner has move the next page.
+                         status = MINIBASE_BM->unpinPage(tmpId, true);
+	                 if( status != OK)
+        	                	 	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+	
+	        	         // if there is next Page, then pin this page into buffer pool.
+        	        	         if(curRid.pageNo != INVALID_PAGE){
+                	        	 	status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
+                        	 	if(status != OK)
+                          		return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+			 }
+			 return OK;
+		}*/
+		
 
 		// Calling KeyCompare until find the start point to scan.
 		int res = 0;
@@ -446,8 +475,9 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
         	        	        if(curRid.pageNo != INVALID_PAGE){
                 	        	        status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
                         	        	if(status != OK)
-                                	        	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+                                	        	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);	
                         		}
+					return OK;
 				}else
 						return MINIBASE_CHAIN_ERROR(BTREE, status);
 			}
