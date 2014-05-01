@@ -106,6 +106,7 @@ const char* BtreeErrorMsgs[] = {
   // CANT_SPLIT_INDEX_PAGE
   "Can't allocate leaf page"
   "No key type"
+  "Exceed key length"
 };
 
 static error_string_table btree_table( BTREE, BtreeErrorMsgs);
@@ -2419,6 +2420,18 @@ Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo,
 Status BTreeFile::insert(const void *key, const RID rid) {
 	// put your code here
 	Status status;
+
+	//--- check key size ---
+	if(headerPage->keyType == attrString)
+	{
+		int len = strlen((char*)key) + 1;
+		if (len > MAX_KEY_SIZE1)
+			return MINIBASE_FIRST_ERROR(BTREE, EXCEED_KEY_LENGTH); 
+	}
+	else if(headerPage->keyType != attrInteger)
+	{
+		return MINIBASE_FIRST_ERROR(BTREE, NO_KEY_TYPE);
+	}
 
 	//-- call insertHelper ---
 	Keytype lowerKey;
