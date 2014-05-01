@@ -74,6 +74,7 @@ BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int
 	
 	curRid.pageNo = INVALID_PAGE;
 	curRid.slotNo = INVALID_SLOT;
+
 	
 	
 	Status status;
@@ -114,8 +115,10 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 	lPage = (BTLeafPage *)curPage;
 
 	// no page, scan finish.
-	if(curRid.pageNo == INVALID_PAGE)
-		return DONE;
+	if(curRid.pageNo == INVALID_PAGE){
+			curPage = NULL;
+			return DONE;
+		}
 
 	// if this is the first rec in the page, get the first record.
 	if(curRid.slotNo == INVALID_SLOT)
@@ -416,9 +419,14 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		curPage = tmpPage;
 		tmpLPage = (BTLeafPage *)tmpPage;
 		status = tmpLPage->get_first(curRid, &dataEntry.key, tmpRid);
-		if(status != OK)	
+		if(status != OK && status != NOMORERECS)	
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
 		
+		//if(status == NOMORERECS){
+		//	curPage = tmpPage;
+		//	curRid.pageNo = pageid;
+		//}
+
 		// Calling KeyCompare until find the start point to scan.
 		int res = 0;
 		res = keyCompare(&dataEntry.key, lo_key, keyType);

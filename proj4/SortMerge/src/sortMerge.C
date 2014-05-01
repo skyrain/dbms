@@ -22,9 +22,10 @@ SortMerge::sortMerge(
 		TupleOrder      order,          // Sorting order: Ascending or Descending
 		Status&         s               // Status of constructor
 		)
-The sortMerge constructor joins two relations R and S, represented by the heapfiles filename1 and filename2, respectively, using the sort-merge join algorithm. If the record in S and R are equal, merge and insert into output file filename3, the merged record will do a Cartesian product on the equal record on R and S.
 
-sortMerge::~sortMerge(): SortMerge destructor, it does nothing.
+The sortMerge constructor joins two relations R and S, represented by the heapfiles filename1 and filename2,respectively, using the sort-merge join algorithm. If the record in S and R are equal, merge and insert into output file filename3, the merged record will do a Cartesian product on the equal record on R and S.
+
+sortMerge::~sortMerge(): SortMerge destructor, it does nothing, all pointers and memory are reclaimed in the sortMerge function..
 
 - Anything unusual in your implementation
 Because it's sequencial scan, we use only one doubly linked list and it is faster than the directory structure.
@@ -191,7 +192,6 @@ sortMerge::sortMerge(
 		delete scanR;
 		heapfileR->deleteFile();
 		delete heapfileR;
-
 
 		delete scanS1;
 		heapfileS1->deleteFile();

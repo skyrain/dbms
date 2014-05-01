@@ -334,8 +334,8 @@ void BTreeTest::test2() {
 	cout << " Failed as expected " << endl;
 
 	//lokey > largest key
-	lokey = 10000;
-	hikey = 10010;
+	lokey = 100000;
+	hikey = 100100;
 	scan = btf->new_scan(&lokey,&hikey);
 	cout << "\n-----Start MinMaxRangeScan with lokey = " << lokey \
 			 << " hikey = " << hikey << "-----\n";
