@@ -137,11 +137,11 @@ int key;
 };
 
     cout << "\nstart BTreeIndex insertion" << endl << endl;
-	
+
     dummy kill[410];
     for (i = 0; i < num; i++) {
         rid.pageNo = i; rid.slotNo = i+1;
-	key =  num - i; 
+	key = num - i; 
 	if (i % 10 == 0) {
 	  kill[(i/10)].r.pageNo = rid.pageNo;
 	  kill[(i/10)].r.slotNo = rid.slotNo;
@@ -171,7 +171,7 @@ int key;
         }
     }
 
-	delete btf;
+    delete btf;
 
     btf = new BTreeFile(status, "BTreeIndex");
     if(status == OK)
@@ -300,8 +300,8 @@ void BTreeTest::test2() {
 	cout << " Failed as expected " << endl;
 
 	//lokey > largest key
-	lokey = 100000;
-	hikey = 100100;
+	lokey = 10000;
+	hikey = 10010;
 	scan = btf->new_scan(&lokey,&hikey);
 	cout << "\n-----Start MinMaxRangeScan with lokey = " << lokey \
 			 << " hikey = " << hikey << "-----\n";
@@ -599,7 +599,7 @@ void BTreeTest::test4() {
     int key, lokey, hikey;
     RID rid;
     int num = 1000;
-    int num_deletes =  400;
+    int num_deletes = 400;
     int i;
     dummy values[num];
 
@@ -641,14 +641,15 @@ cout << " key " << values[i].key
     for (i=0; i < num; i++){
         //cout << " Inserting key " << values[i].key << " order " 
              //<< values[i].sort_value1 << endl;
-		
-		if (btf->insert(&(values[i].key), values[i].r) != OK) {
+       	if (btf->insert(&(values[i].key), values[i].r) != OK) {
             minibase_errors.show_errors();
         }
     }
     cout << "\n------ End of insert------" << endl;
 
-	// test delete()
+   
+
+    // test delete()
     cout << "\n\n------ Delete the first " << num_deletes 
          << " of the records-----" << endl;
 
@@ -662,8 +663,6 @@ cout << " key " << values[i].key
 	    cout << "[" << values[i].r.pageNo<<","
                  << values[i].r.slotNo << "]" <<endl;
 */
-		if(values[i].key == 690|| values[i].key == 570)
-			cout << "Deleted  " << i << "  records " << values[i].key <<endl;
 	    if (btf->Delete(&values[i].key, values[i].r) != OK) {
 	       minibase_errors.show_errors();
 	    }
@@ -689,8 +688,8 @@ cout << " key " << values[i].key
 		minibase_errors.show_errors();
         i++;
     }
-	
-	//AllScan
+
+    //AllScan
     scan = btf->new_scan(NULL,NULL);
     cout << "\n\n------Start AllScan------" << endl;
 

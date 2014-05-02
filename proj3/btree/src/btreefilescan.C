@@ -10,7 +10,7 @@
 	// Deconstructor of BTreeFileScan.
 	BTreeFileScan::~BTreeFileScan()
 
-	// get the next record
+	// get the next record, it will skip the duplicate key.
 	Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 
 	// delete the record currently scanned
