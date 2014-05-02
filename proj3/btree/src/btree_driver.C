@@ -129,8 +129,7 @@ void BTreeTest::test1() {
 
 
     // test insert()
-	//-- check indexSplit 
-    num = 2000;//50000;//62*84*2 + 1;// + 62*41 + 1;// + 1;
+    num = 2000;
     
 struct dummy{
 RID r;
@@ -138,8 +137,7 @@ int key;
 };
 
     cout << "\nstart BTreeIndex insertion" << endl << endl;
-
-///*	
+	
     dummy kill[410];
     for (i = 0; i < num; i++) {
         rid.pageNo = i; rid.slotNo = i+1;
@@ -173,39 +171,6 @@ int key;
         }
     }
 
-//*/
-/*
-//--- for test ---
-    dummy kill[num];
-    for (i = 0; i < num; i++) {
-        rid.pageNo = i; rid.slotNo = i+1;
-	key =  num - i; 
-	  kill[i].r.pageNo = rid.pageNo;
-	  kill[i].r.slotNo = rid.slotNo;
-	  kill[i].key = key;
-        if (btf->insert(&key, rid) != OK) {
- 	   cout << "Inserting record with key = " << key << "  [pageNo,slotNo] = ";
-	   cout << "[" << rid.pageNo<<","<<rid.slotNo<<"] failed!!\n" <<endl;
-            minibase_errors.show_errors();
-        }
-	}
-  
-
-    // test delete()
-
-    cout << "\nstart BTreeIndex deletion" << endl << endl;
-    int j = 0;
-    for (i = 0; i < num; i++) {
-	    j++;
-	    if (btf->Delete(&kill[i].key, kill[i].r) != OK) {
-	    	cout << " Deleting record with key = " << kill[i].key << "  [pageNo,slotNo] = ";
-	        cout << "[" << kill[i].r.pageNo<<","<<kill[i].r.slotNo<<"] failed !!"<<endl;
-	       minibase_errors.show_errors();
-	    }
-
-        }
-*/
-//--- for test end ---
 	delete btf;
 
     btf = new BTreeFile(status, "BTreeIndex");

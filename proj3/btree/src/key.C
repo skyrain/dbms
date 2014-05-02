@@ -102,11 +102,11 @@ void make_entry(KeyDataEntry *target,
 {
 	// entry_len =  key_len + data_len;
 	int key_len = 0;
-	int data_len = 0;
+	//int data_len = 0;
 	// Final length of the entry.
 	*pentry_len = get_key_data_length(key, key_type, ndtype);
 	key_len = get_key_length(key, key_type);
-	data_len = *pentry_len - key_len;
+	//data_len = *pentry_len - key_len;
 
 	// write a key into memory chunk of target.
 	if(key_type == attrInteger){

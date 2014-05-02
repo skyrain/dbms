@@ -33,6 +33,55 @@
 	//--- ls: left sibling
 	Status BTreeFile::insertHelper(const void* key, const RID rid, PageId pageNo, void* l_Key, PageId& l_UpPageNo, bool& l_split, HFPage*& uPage)
 
+
+	//---- assist functions for insertHelper ---
+    //--- for index root split case ---
+	Status  indexRootSplit(PageId pageNo, const Keytype lowerKey,
+             const PageId lowerUpPageNo, HFPage* currPage);
+ 
+	 //--- for index left redis case ---
+     //--- input lRedi: true ---
+     Status indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
+            const PageId lowerUpPageNo, bool& lRedi,
+             HFPage* currPage, HFPage* uPage);
+ 
+	 //-- for index rigth redis case ---
+     //--- input rRedi: true ---
+     Status indexRightRedistribution(PageId pageNo, const Keytype lowerKey,
+             const PageId lowerUpPageNo, bool& rRedi,
+           HFPage* currPage, HFPage* uPage);
+
+	 //--- for index split case, not root ---
+     Status indexSplit(PageId pageNo, const Keytype lowerKey,
+            const PageId lowerUpPageNo,
+            void* l_Key, PageId& l_UpPageNo, bool& l_split,
+             HFPage* currPage, HFPage* uPage);
+
+     //--- for leaf ---
+    //------------ for leaf root split case ---
+     Status  leafRootSplit(PageId pageNo, const void *key,
+             const RID rid, HFPage* currPage);
+ 
+	//--- for leaf left redis case ---		 
+     //--- input lRedi: true ---
+    Status  leafLeftRedistribution(PageId pageNo, const void* key,
+             const RID rid, bool& lRedi,
+             HFPage* currPage, HFPage* uPage);
+ 
+	//--- for leaf rigth redis case ---
+     //--- input rRedi: true ---
+     Status leafRightRedistribution(PageId pageNo, const void * key,
+             const RID rid, bool& rRedi,
+             HFPage* currPage, HFPage* uPage);
+
+	//--- for leas split , not root case ---
+     Status leafSplit(PageId pageNo, const void* key,
+             const RID rid,
+             void* l_Key, PageId& l_UpPageNo, bool& l_split,
+            HFPage* currPage, HFPage* uPage);
+ 
+
+
 	// Supporting function for Delete(), recursively find the leaf node and delete the leaf node.
 	// Only implemented delete in the leaf node without redistribution when the record drop below the half.
 	Status deleteHelper(const void *key, const RID rid, PageId pageNo);

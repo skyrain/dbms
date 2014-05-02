@@ -10,12 +10,10 @@ Comments:
 
 	2.Anything unusual in your implementation
 	We put the corresponding unusual implementations in the head of corresponding source code:btleafpage.C,btindexpage.C, btfile.C key.C, sorted_page.C btreefilescan.C
-	Still Have some problems on insertion, but all the overall outline is basically right.
-	We will fix this problems ASAP. 
 
 	3.What functionalities not supported well
-	Insertion works not properly. So we can not test the correctness of other functions so far. 
-  -----------------------------------------------
+   All functions are supported well.
+	-----------------------------------------------
 */
 
 Date: 02/14/14

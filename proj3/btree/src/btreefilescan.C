@@ -198,7 +198,6 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 
 			return get_next(rid, keyptr);
 		}
-
 		/* Implementation of Skipping from continues duplicate key*/
 		// Skip the duplicate record.
 		int contRes;
@@ -289,6 +288,8 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 		if(contRes == 0)
 			return get_next(contERid, contKey);		
 		/* End of the implementation of skipping continues key*/
+		
+
 	}		
 
 	// determine whether the key beyond the hi_key key at last.
@@ -387,13 +388,17 @@ Status BTreeFileScan::fromLeftMostPage(PageId pageid)
 	if(type == INDEX){
 		// call fromLeftMostPage recursively.
 		status = fromLeftMostPage(tmpIPage->getLeftLink());
-		if(status != OK)
+		if(status != OK && status != DONE)
 			return MINIBASE_FIRST_ERROR(BTREE, NO_LEAF_NODE);
 		
+		Status ss;
 		// unpin the current page;
-		status = MINIBASE_BM->unpinPage(pageid, true);
-		if(status != OK)
+		ss = MINIBASE_BM->unpinPage(pageid, true);
+		if(ss != OK)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+
+		if(status == DONE)
+			return DONE;
 	} 
 	
 	// if the node is not a INDEX oage, then we find it!
@@ -404,7 +409,11 @@ Status BTreeFileScan::fromLeftMostPage(PageId pageid)
 		RID tDataRid;
 		//--- check whether current leaf page has record ---
 		status = ((BTLeafPage*)tmpPage)->get_first(tRid, &tKey, tDataRid);
+
 		if(status != OK && status != NOMORERECS)
+			return MINIBASE_FIRST_ERROR(BTREE, status);
+
+		if(status == NOMORERECS)
 		{
 			PageId nextLeafId = ((HFPage*)tmpPage)->getNextPage();
 
@@ -494,8 +503,11 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 		// recursively call fromLowPage if it is still an index.
 		status = fromLowPage(tmpId);
-		if(status != OK)	
+		if(status != OK && status != DONE)	
 			return MINIBASE_FIRST_ERROR(BTREE, NO_LEAF_NODE);
+
+		if(status == DONE)
+			return DONE;
 	}
 
 	// if this is the leaf node, then find the low key record, to start with.
@@ -564,7 +576,10 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		// Calling KeyCompare until find the start point to scan.
 		int res = 0;
 		res = keyCompare(&tKey, lo_key, keyType);
+		RID prevRid;
+		prevRid.slotNo = INVALID_SLOT;
 		while(res < 0){
+			prevRid = tRid;
 			status = tmpLPage->get_next(tRid, &tKey, tDataRid);
 			if(status != OK){
 				if(status == NOMORERECS){
@@ -595,7 +610,7 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		}
 		
 		curRid.pageNo = pageid;
-		curRid.slotNo = tRid.slotNo;
+		curRid.slotNo = prevRid.slotNo;
 		curPage = tmpPage;
 	}
 

@@ -111,39 +111,46 @@ class BTreeFile: public IndexFile
 
 	Status deleteHelper(const void *key, const RID rid, PageId pageNo);
 
+	//--- for index root split case ---
 	Status	indexRootSplit(PageId pageNo, const Keytype lowerKey, 
 			const PageId lowerUpPageNo, HFPage* currPage);	
 
+	//--- for index left redis case ---
 	//--- input lRedi: true ---
 	Status indexLeftRedistribution(PageId pageNo, const Keytype lowerKey,
 			const PageId lowerUpPageNo, bool& lRedi, 
 			HFPage* currPage, HFPage* uPage);
 
+	//--- for idnex right redis case ---
 	//--- input rRedi: true ---
 	Status indexRightRedistribution(PageId pageNo, const Keytype lowerKey,
 			const PageId lowerUpPageNo, bool& rRedi, 
 			HFPage* currPage, HFPage* uPage);
 
+	//--- for index split (not root) case ---
 	Status indexSplit(PageId pageNo, const Keytype lowerKey,
 			const PageId lowerUpPageNo,
 			void* l_Key, PageId& l_UpPageNo, bool& l_split,
 			HFPage* currPage, HFPage* uPage);
 
 	//--- for leaf ---
-	//------------
+	//------------ for leaf root split ---
 	Status	leafRootSplit(PageId pageNo, const void *key, 
 			const RID rid, HFPage* currPage);	
 
+	//--- for leaf left redis case ---
 	//--- input lRedi: true ---
 	Status  leafLeftRedistribution(PageId pageNo, const void* key,
 			const RID rid, bool& lRedi, 
 			HFPage* currPage, HFPage* uPage);
 
+	//--- for left right redis case ---
 	//--- input rRedi: true ---
 	Status leafRightRedistribution(PageId pageNo, const void * key,
 			const RID rid, bool& rRedi, 
 			HFPage* currPage, HFPage* uPage);
 
+	//--- for left split case (not root) ---
 	Status leafSplit(PageId pageNo, const void* key,
 			const RID rid,
 			void* l_Key, PageId& l_UpPageNo, bool& l_split,
