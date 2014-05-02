@@ -55,6 +55,7 @@
 #include "new_error.h"
 #include "btfile.h"
 #include "btreefilescan.h"
+#include "bt.h"
 
 /*
  * Note: BTreeFileScan uses the same errors as BTREE since its code basically 
@@ -78,29 +79,43 @@ BTreeFileScan::BTreeFileScan(const void *l, const void *h, AttrType keytype, int
 	
 	
 	Status status;
-	// if assign lo_key = NULL, start from the left most page.
+	// if exist lo and hi key
 	if(l != NULL && h != NULL)
 	{	
-		if(*(int*)l > *(int*)h)
+		//if(*(int*)l > *(int*)h)
+		if(keyCompare(l, h, keytype) > 0)
 					curRid.pageNo = INVALID_PAGE;
+		else
+		{
+			status= fromLowPage(rootPageId);
+			if(status != OK)
+				curRid.pageNo = INVALID_PAGE;
+		}
+
 		
-	}else if(l != NULL){
+	}
+	// if exist only lo key 
+	else if(l != NULL){
 			// largest key "50000" number should pass down by btfile
-			if(*(int*)l >= 50000)
-				curRid.pageNo = INVALID_PAGE;	
-			else{
+			//if(*(int*)l >= 50000)//????
+			//	curRid.pageNo = INVALID_PAGE;	
+			//else{
 				// start from the given low key.
 				status = fromLowPage(rootPageId);
 				if(status != OK)
 					curRid.pageNo = INVALID_PAGE;
-			}
+			//}
 	}
+	// if exist only hi key
 	else if(h != NULL)	
 	{
 				// smallest key "0" number should pass down by btfile
-				if(*(int*)h <= 0)
+				//if(*(int*)h <= 0)
+				status = fromLeftMostPage(rootPageId);
+				if(status != OK)
 					curRid.pageNo = INVALID_PAGE;			
-	}else{
+	}
+	else{
 		status = fromLeftMostPage(rootPageId);
 		if(status != OK)
 			curRid.pageNo = INVALID_PAGE;
@@ -123,17 +138,17 @@ BTreeFileScan::~BTreeFileScan()
 // get the next record
 Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 {
+	// no page, scan finish.
+	if(curRid.pageNo == INVALID_PAGE){
+			curPage = NULL;
+			return DONE;
+	}
+
 	Status status;
 	curDeleted = false;
 	PageId prevPageId = INVALID_PAGE;
 	BTLeafPage *lPage = NULL;
 	lPage = (BTLeafPage *)curPage;
-
-	// no page, scan finish.
-	if(curRid.pageNo == INVALID_PAGE){
-			curPage = NULL;
-			return DONE;
-		}
 
 	// if this is the first rec in the page, get the first record.
 	if(curRid.slotNo == INVALID_SLOT)
@@ -159,7 +174,6 @@ Status BTreeFileScan::get_next(RID & rid, void* keyptr)
 			}
 
 			return get_next(rid, keyptr);
-
 		}
 	}
 	else
@@ -346,7 +360,9 @@ int BTreeFileScan::keysize()
 	return keysize;
 }
 
-// Supporting function for the constructor, it will find the left most node of the tree.
+// Supporting function for the constructor, it will find the left most leaf
+// (which exist record) of the tree.
+// if all leaf mepty, return DONE;
 // Dealing the following cases:
     //      (1) lo_key = NULL, hi_key = NULL
     //              scan the whole index
@@ -380,8 +396,60 @@ Status BTreeFileScan::fromLeftMostPage(PageId pageid)
 			return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
 	} 
 	
-	// if the node is not a INDEX oage, then we fine it!
+	// if the node is not a INDEX oage, then we find it!
+	// and need to get the first available record place
 	if(type == LEAF){
+		RID tRid;
+		Keytype tKey;
+		RID tDataRid;
+		//--- check whether current leaf page has record ---
+		status = ((BTLeafPage*)tmpPage)->get_first(tRid, &tKey, tDataRid);
+		if(status != OK && status != NOMORERECS)
+		{
+			PageId nextLeafId = ((HFPage*)tmpPage)->getNextPage();
+
+			//--- unpin current leaf ---
+			status = MINIBASE_BM->unpinPage(pageid, true);
+			if(status != OK)
+				return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+
+			tmpPage = NULL;
+			
+			while(nextLeafId != INVALID_PAGE)
+			{
+				//-- pin next leaf -
+				status = MINIBASE_BM->pinPage(nextLeafId, tmpPage);
+				if(status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, CANT_PIN_PAGE);
+
+				//--- check whether next leaf page has record ---
+				status = ((BTLeafPage*)tmpPage)->get_first(tRid, &tKey, tDataRid);
+				if(status != OK && status != NOMORERECS)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+				if(status == NOMORERECS)//--- next leaf is empty,
+					//check nnext page ---
+				{
+					//--- unpin next leaf ---
+					status = MINIBASE_BM->unpinPage(nextLeafId, true);
+					if(status != OK)
+						return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);	
+					
+					nextLeafId = ((HFPage*)tmpPage)->getNextPage();
+					tmpPage = NULL;
+				}
+				else if(status == OK)//--- next page exists record ---
+					break;
+			}
+
+			curPage = tmpPage;
+			curRid.pageNo = nextLeafId;
+
+			//--- if all leaf are empty ---
+			if(nextLeafId == INVALID_PAGE)
+				return DONE;
+
+		}
+
 		curPage = tmpPage;
 		curRid.pageNo = pageid;
 	}
@@ -389,7 +457,10 @@ Status BTreeFileScan::fromLeftMostPage(PageId pageid)
 	return OK;
 }
 
-// Supporting function for the constructor, it will find the low key node of the tree.
+// Supporting function for the constructor, it will find the low key leaf 
+// of the tree.
+// if all leaf are empty, return DONE
+// if no lo key, find smallest key(> lo_key);
 // Dealing the following cases:
     //      (3) lo_key!= NULL, hi_key = NULL
     //              range scan from the lo_key to max
@@ -400,21 +471,21 @@ Status BTreeFileScan::fromLeftMostPage(PageId pageid)
 Status BTreeFileScan::fromLowPage(PageId pageid)
 {
 	Status status;
-        PageId tmpId = INVALID_PAGE;
+	PageId tmpId = INVALID_PAGE;
 	Page *tmpPage = NULL;
-        SortedPage *tmpSPage = NULL;
-        BTIndexPage *tmpIPage = NULL;
+	SortedPage *tmpSPage = NULL;
+	BTIndexPage *tmpIPage = NULL;
 	BTLeafPage *tmpLPage = NULL;	
 
 	status = MINIBASE_BM->pinPage(pageid, tmpPage);
 	if(status != OK)
 		return MINIBASE_FIRST_ERROR(BTREE, CANT_PIN_PAGE);
-	
+
 	// if the type is still the index page, the recursively call this funciton to get to the leaf.
-        short type;
+	short type;
 	tmpSPage = (SortedPage *)tmpPage;
-        tmpIPage = (BTIndexPage *)tmpPage;
-        type = tmpSPage->get_type();
+	tmpIPage = (BTIndexPage *)tmpPage;
+	type = tmpSPage->get_type();
 	if(type == INDEX){
 		// if this is a index, them find the child node of given low key by calling get_page_no.
 		tmpIPage->get_page_no(lo_key, keyType, tmpId);
@@ -426,65 +497,107 @@ Status BTreeFileScan::fromLowPage(PageId pageid)
 		if(status != OK)	
 			return MINIBASE_FIRST_ERROR(BTREE, NO_LEAF_NODE);
 	}
-	
+
 	// if this is the leaf node, then find the low key record, to start with.
 	if(type == LEAF){
-		KeyDataEntry dataEntry;
-		RID tmpRid;
-		curPage = tmpPage;
+		RID tRid;
+		Keytype tKey;
+		RID tDataRid;
+		
+		//--- check whether located leaf has the record ---
 		tmpLPage = (BTLeafPage *)tmpPage;
-		status = tmpLPage->get_first(curRid, &dataEntry.key, tmpRid);
+		status = tmpLPage->get_first(tRid, &tKey, tDataRid);
 		if(status != OK && status != NOMORERECS)	
 			return MINIBASE_CHAIN_ERROR(BTREE, status);
-		
-		/*if(status == NOMORERECS){
-			 tmpId = curRid.pageNo;
-			 curRid.pageNo = tmpLPage->getNextPage();
-        		 curRid.slotNo = INVALID_SLOT;
-			 // unpin the previous page because scanner has move the next page.
-                         status = MINIBASE_BM->unpinPage(tmpId, true);
-	                 if( status != OK)
-        	                	 	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-	
-	        	         // if there is next Page, then pin this page into buffer pool.
-        	        	         if(curRid.pageNo != INVALID_PAGE){
-                	        	 	status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
-                        	 	if(status != OK)
-                          		return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-			 }
-			 return OK;
-		}*/
-		
+		//--- if located leaf is empty, find next page which is non-empty ---
+		if(status == NOMORERECS)
+		{
+			PageId nextLeafId = tmpLPage->getNextPage();
+			
+			// unpin current leaf ---
+			status = MINIBASE_BM->unpinPage(pageid, true);
+			if( status != OK)
+				return MINIBASE_FIRST_ERROR(BTREE, status);
 
+			tmpPage = NULL;
+
+			while(nextLeafId != INVALID_PAGE)
+			{
+				//--- pin next leaf ---
+				status = MINIBASE_BM->pinPage(nextLeafId, tmpPage);
+				if(status != OK)
+					return MINIBASE_FIRST_ERROR(BTREE, status);
+
+				//--- check whether next leaf has record --
+				status = ((BTLeafPage*)tmpPage)->get_first(tRid, &tKey, tDataRid);
+				if(status != OK && status != NOMORERECS)
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
+				if(status == NOMORERECS)//--- next leaf is empty,
+					//check nnext page ---
+				{
+					//--- unpin next leaf ---
+					status = MINIBASE_BM->unpinPage(nextLeafId, true);
+					if(status != OK)
+						return MINIBASE_FIRST_ERROR(BTREE, CANT_UNPIN_PAGE);
+				
+					nextLeafId = ((HFPage*)tmpPage)->getNextPage();
+					tmpPage = NULL;
+
+				}
+				else if(status == OK)//--- next page exists record ---
+				{
+					curPage = tmpPage;
+					curRid.pageNo = nextLeafId;
+					curRid.slotNo = tRid.slotNo;
+					return OK;
+				}
+			}
+
+			//--- all leaf are empty ---
+			curRid.pageNo = INVALID_PAGE;
+			curPage = NULL;
+
+			return DONE;
+		}
+
+		//--- if the located leaf page has record ---
 		// Calling KeyCompare until find the start point to scan.
 		int res = 0;
-		res = keyCompare(&dataEntry.key, lo_key, keyType);
+		res = keyCompare(&tKey, lo_key, keyType);
 		while(res < 0){
-			status = tmpLPage->get_next(curRid, &dataEntry.key, tmpRid);
+			status = tmpLPage->get_next(tRid, &tKey, tDataRid);
 			if(status != OK){
 				if(status == NOMORERECS){
-			 		tmpId = curRid.pageNo;
-		                        curRid.pageNo = tmpLPage->getNextPage();
-        		                curRid.slotNo = INVALID_SLOT;
-                		        // unpin the previous page because scanner has move the next page.
-                        		status = MINIBASE_BM->unpinPage(tmpId, true);
-	                        	if( status != OK)
-        	                        	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
-	
-	        	                // if there is next Page, then pin this page into buffer pool.
-        	        	        if(curRid.pageNo != INVALID_PAGE){
-                	        	        status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
-                        	        	if(status != OK)
-                                	        	return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);	
-                        		}
-					return OK;
+					//---located leaf no lo_key or all keys smaller than lo_key---
+					//--- return OK;
+					curRid.pageNo = tmpLPage->getNextPage();
+					curRid.slotNo = INVALID_SLOT;
+					// unpin current page 
+					status = MINIBASE_BM->unpinPage(pageid, true);
+					if( status != OK)
+						return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+
+					// if there is next Page, get curPage.
+					if(curRid.pageNo != INVALID_PAGE){
+
+						status = MINIBASE_BM->pinPage(curRid.pageNo, curPage);
+						if(status != OK)
+							return MINIBASE_FIRST_ERROR(BTREE, DELETE_TREE_ERROR);
+						
+						return OK;
+					}
+					else// no good key
+						return DONE;
 				}else
-						return MINIBASE_CHAIN_ERROR(BTREE, status);
+					return MINIBASE_CHAIN_ERROR(BTREE, status);
 			}
-			res = keyCompare(&dataEntry.key, lo_key, keyType);
+			res = keyCompare(&tKey, lo_key, keyType);
 		}
-		curRid.slotNo --;
+		
+		curRid.pageNo = pageid;
+		curRid.slotNo = tRid.slotNo;
+		curPage = tmpPage;
 	}
-	
+
 	return OK;
 }

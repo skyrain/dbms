@@ -130,7 +130,7 @@ void BTreeTest::test1() {
 
     // test insert()
 	//-- check indexSplit 
-    num = 50000;//62*84*2 + 1;// + 62*41 + 1;// + 1;
+    num = 2000;//50000;//62*84*2 + 1;// + 62*41 + 1;// + 1;
     
 struct dummy{
 RID r;
@@ -139,7 +139,7 @@ int key;
 
     cout << "\nstart BTreeIndex insertion" << endl << endl;
 
-/*	
+///*	
     dummy kill[410];
     for (i = 0; i < num; i++) {
         rid.pageNo = i; rid.slotNo = i+1;
@@ -173,7 +173,8 @@ int key;
         }
     }
 
-*/
+//*/
+/*
 //--- for test ---
     dummy kill[num];
     for (i = 0; i < num; i++) {
@@ -203,7 +204,7 @@ int key;
 	    }
 
         }
-
+*/
 //--- for test end ---
 	delete btf;
 
