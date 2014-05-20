@@ -23,6 +23,7 @@
 
 #include <string.h>
 
+//--- text range information holder ---
 typedef struct Range{
 	char* start;
 	bool startIncluded;
@@ -32,6 +33,7 @@ typedef struct Range{
 
 }Range;
 
+//--- boundary information holder---
 typedef struct Node
 {
 	char* boundary;
@@ -48,6 +50,7 @@ class TextRange{
 	void deletion(TextRange* del);
 	bool testRange(char* s);
 
+	//--- info to hold textRanges ---
 	Range* textRange;
 
 	//--- assist functions ---
