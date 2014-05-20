@@ -37,10 +37,11 @@ typedef struct Node
 	char* boundary;
 	bool included;
 	bool isStart;
+	bool isDelete;
 	struct Node* next;
 }Node;
 
-public class TextRange{
+class TextRange{
 
 	public:
 	void addition(TextRange* add);
@@ -48,6 +49,10 @@ public class TextRange{
 	bool testRange(char* s);
 
 	Range* textRange;
-}
+
+	//--- assist functions ---
+	bool findNode(Node* list, bool isStartNode, char* bound,
+			bool& included);
+};
 
 #endif
