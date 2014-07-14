@@ -1,9 +1,7 @@
-/*
-   -------------------------------------------
-Partners: 
-	Tianyu Qiu - tianyuq@email.arizona.edu
-	Xudong Weng - weng@email.arizona.edu	
+Project: Database Management System B+ tree index
 
+
+-------------------------------------------
 Comments:
 	1.Overall description of your algorithms and data structures
 	We put the corresponding algorithms and data structures in buf.h and the head of source code: btleafpage.C,btindexpage.C, btfile.C key.C, sorted_page.C btreefilescan.C
